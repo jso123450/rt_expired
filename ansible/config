@@ -1,0 +1,34 @@
+Host rt_expired_1
+    HostName 130.245.169.240
+    User ubuntu
+    IdentityFile ~/.ssh/id_rsa
+
+Host rt_expired_2
+    HostName 192.168.1.74
+    User ubuntu
+    ProxyCommand ssh -W %h:%p rt_expired_1
+
+Host rt_shipper_1
+    HostName 192.168.1.75
+    User ubuntu
+    ProxyCommand ssh -W %h:%p rt_expired_1
+
+Host rt_shipper_2
+    HostName 192.168.1.76
+    User ubuntu
+    ProxyCommand ssh -W %h:%p rt_expired_1
+
+Host rt_shipper_3
+    HostName 192.168.1.79
+    User ubuntu
+    ProxyCommand ssh -W %h:%p rt_expired_1
+    
+Host rt_shipper_4
+    HostName 192.168.1.80
+    User ubuntu
+    ProxyCommand ssh -W %h:%p rt_expired_1
+
+Host rt_shipper_5
+    HostName 192.168.1.81
+    User ubuntu
+    ProxyCommand ssh -W %h:%p rt_expired_1

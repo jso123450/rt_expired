@@ -1,0 +1,243 @@
+---
+- hosts:
+    [
+      "rt_expired_1",
+      "rt_expired_2",
+      "rt_expired_3",
+      "rt_expired_4",
+      "rt_shipper_1",
+      "rt_shipper_2",
+      "rt_shipper_3",
+      "rt_shipper_4",
+      "rt_shipper_5",
+    ]
+  become: yes
+  become_method: sudo
+  remote_user: ubuntu
+
+  # https://www.digitalocean.com/community/tutorials/how-to-install-elasticsearch-logstash-and-kibana-elastic-stack-on-ubuntu-18-04#step-2-%E2%80%94-installing-and-configuring-the-kibana-dashboard
+  tasks:
+    # prereqs
+    - name: install jre
+      apt:
+        name: openjdk-8-jre
+        update_cache: yes
+    - name: install jdk
+      apt:
+        name: openjdk-8-jdk
+    - name: import ES public GPG key
+      apt_key:
+        url: https://artifacts.elastic.co/GPG-KEY-elasticsearch
+        state: present
+      become: yes
+    - name: add the Elastic source list sources.list.d
+      apt_repository:
+        repo: deb https://artifacts.elastic.co/packages/7.x/apt stable main
+        state: present
+      become: yes
+    # - name: install nginx
+    #   apt:
+    #     name: nginx
+    # - name: allow nginx thru ufw
+    #   command: ufw allow 'Nginx Full'
+    #   become: yes
+
+    ## prereqs for logstash postfix pipeline
+    # - name: clone postfix repo
+    #   git:
+    #     repo: https://github.com/whyscream/postfix-grok-patterns.git
+    #     dest: /home/ubuntu/postfix-grok-patterns
+    # - name: create logstash patterns dir
+    #   file:s
+    #     path: /etc/logstash/patterns.d
+    #     state: directory
+    #   become: yes
+    # - name: move postfix patterns
+    #   copy:
+    #     remote_src: yes
+    #     src: /home/ubuntu/postfix-grok-patterns/postfix.grok
+    #     dest: /etc/logstash/patterns.d/postfix.grok
+    #   become: yes
+
+    # # elasticsearch
+    # - name: install ES
+    #   apt:
+    #     name: elasticsearch # edit /etc/elasticsearch/elasticsearch.yml:network.host to be localhost
+    # - name: start ES (and on boot)
+    #   systemd:
+    #     name: elasticsearch
+    #     state: restarted
+    #     enabled: yes
+    #   become: yes
+
+    # logstash
+    - name: install logstash
+      apt:
+        name: logstash
+    - name: logstash config
+      copy:
+        src: /home/jso/ansible/logstash/logstash.yml
+        dest: /etc/logstash/logstash.yml
+      become: yes
+    - name: beats input
+      copy:
+        src: /home/jso/ansible/logstash/01-input-beats.conf
+        dest: /etc/logstash/conf.d/01-input-beats.conf
+      become: yes
+    - name: container filter
+      copy:
+        src: /home/jso/ansible/logstash/09-filter-ctr.conf
+        dest: /etc/logstash/conf.d/09-filter-ctr.conf
+    - name: nginx pipeline
+      copy:
+        src: "{{ item }}"
+        dest: /etc/logstash/conf.d
+      with_fileglob:
+        - /home/jso/ansible/logstash/*nginx.conf
+      become: yes
+    - name: postfix pipeline
+      copy:
+        src: "{{ item }}"
+        dest: /etc/logstash/conf.d
+      with_fileglob:
+        - /home/jso/ansible/logstash/*postfix.conf
+      become: yes
+    - name: telnet pipeline
+      copy:
+        src: "{{ item }}"
+        dest: /etc/logstash/conf.d
+      with_fileglob:
+        - /home/jso/ansible/logstash/*telnet.conf
+      become: yes
+    - name: ftp pipeline
+      copy:
+        src: "{{ item }}"
+        dest: /etc/logstash/conf.d
+      with_fileglob:
+        - /home/jso/ansible/logstash/*ftp.conf
+      become: yes
+    # - name: syslog pipeline
+    #   copy:
+    #     src: "{{ item }}"
+    #     dest: /etc/logstash/conf.d
+    #   with_fileglob:
+    #     - /home/jso/ansible/logstash/*syslog.conf
+    #   become: yes
+    - name: start logstash (on boot)
+      systemd:
+        name: logstash
+        state: restarted
+        enabled: yes
+      become: yes
+
+    # # kibana
+    # - name: install kibana
+    #   apt:
+    #     name: kibana
+    # - name: start kibana (on boot)
+    #   systemd:
+    #     name: kibana
+    #     state: restarted
+    #     enabled: yes
+    #   become: yes
+    # # echo "username:`openssl passwd -apr1`" | sudo tee -a /etc/nginx/htpasswd.users
+    # # configure nginx for kibana
+    # - name: copy nginx server block
+    #   copy:
+    #     src: /home/jso/ansible/rt_expired.com
+    #     dest: /etc/nginx/sites-available/rt_expired.com
+    # - name: create symbolic link to sites-enabled
+    #   command: ln -s /etc/nginx/sites-available/rt_expired.com /etc/nginx/sites-enabled/rt_expired.com
+    #   become: yes
+    # - name: restart nginx
+    #   systemd:
+    #     name: nginx
+    #     state: restarted
+
+    # filebeat
+    - name: install filebeat
+      apt:
+        name: filebeat
+      # edit /etc/filebeat/filebeat.yml, disable output to ES and enable output to logstash
+    - name: enable system module in filebeat
+      command: filebeat modules enable system
+      become: yes
+    - name: enable nginx module in filebeat
+      command: filebeat modules enable nginx
+      become: yes
+    # - name: load index template
+    #   command: filebeat setup --template -E output.logstash.enabled=false -E 'output.elasticsearch.hosts=["localhost:9200"]'
+    #   become: yes
+    # - name: disable logstash output and enable es output
+    #   command: filebeat setup -e -E output.logstash.enabled=false -E output.elasticsearch.hosts=['localhost:9200'] -E setup.kibana.host=localhost:5601
+    #   become: yes
+    - name: filebeat config
+      copy:
+        src: /home/jso/ansible/filebeat/filebeat.yml
+        dest: /etc/filebeat/filebeat.yml
+      become: yes
+    - name: filebeat nginx config
+      copy:
+        src: /home/jso/ansible/filebeat/nginx.yml
+        dest: /etc/filebeat/modules.d/nginx.yml
+      become: yes
+    - name: filebeat system config
+      copy:
+        src: /home/jso/ansible/filebeat/system.yml
+        dest: /etc/filebeat/modules.d/system.yml
+      become: yes
+    - name: start filebeat (on boot)
+      systemd:
+        name: filebeat
+        state: restarted
+        enabled: yes
+    # filebeat scrubber - local
+    - name: copy filebeat-scrubber
+      copy:
+        src: /home/jso/ansible/filebeat/filebeat_scrubber.py
+        dest: /home/ubuntu
+    - name: copy unzipper
+      copy:
+        src: /home/jso/repos/rt_expired/extract/unzip.py
+        dest: /home/ubuntu
+    # # filebeat scrubber - old filebeat version
+    # - name: install pip3
+    #   apt:
+    #     name: python3-pip
+    # - name: install filebeat-scrubber
+    #   command: pip3 install filebeat-scrubber
+    # # metricbeat
+    # - name: install metricbeat
+    #   apt:
+    #     name: metricbeat
+    # - name: enable beat-xpack module in metricbeat
+    #   command: metricbeat modules enable beat-xpack
+    #   become: yes
+    # - name: disable module in metricbeat
+    #   command: metricbeat modules disable system
+    #   become: yes
+    # # - name: load metricbeat index template
+    # #   command: metricbeat setup --template -E 'output.elasticsearch.hosts=["192.168.1.73:9200", "192.168.1.74:9200", "192.168.1.77:9200", "192.168.1.78:9200"]'
+    # #   become: yes
+    # # - name: configure metricbeat for kibana
+    # #   command: metricbeat setup -e -E 'output.elasticsearch.hosts=["192.168.1.73:9200", "192.168.1.74:9200", "192.168.1.77:9200", "192.168.1.78:9200"]' -E setup.kibana.host=localhost:5601
+    # #   become: yes
+    # - name: start metricbeat (on boot)
+    #   systemd:
+    #     name: metricbeat
+    #     state: restarted
+    #     enabled: yes
+    # # logrotate
+    # - name: install logrotate
+    #   apt:
+    #     name: logrotate
+    # - name: configure logrotate for elasticsearch
+    #   copy:
+    #     src: /home/jso/repos/rt_expired/ansible/logrotate/elasticsearch.conf
+    #     dest: /etc/logrotate.d/elasticsearch.conf
+    #   become: yes
+    # - name: configure logrotate for filebeat
+    #   copy:
+    #     src: /home/jso/repos/rt_expired/ansible/logrotate/filebeat.conf
+    #     dest: /etc/logrotate.d/filebeat.conf
+    #   become: yes

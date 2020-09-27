@@ -1,0 +1,24 @@
+# Module: system
+# Docs: https://www.elastic.co/guide/en/beats/filebeat/7.9/filebeat-module-system.html
+
+- module: system
+  # Syslog
+  syslog:
+    enabled: true
+    input:
+      close_eof: true
+      clean_removed: true
+
+    # Set custom paths for the log files. If left empty,
+    # Filebeat will choose the paths depending on your OS.
+    var.paths:
+      - /home/ubuntu/data/*/var/log/mail*
+      - /home/ubuntu/data/*/var/log/telnet*
+      - /home/ubuntu/data/*/var/log/ftp*
+
+  # Authorization logs
+  auth:
+    enabled: false
+    # Set custom paths for the log files. If left empty,
+    # Filebeat will choose the paths depending on your OS.
+    #var.paths:

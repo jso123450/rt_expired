@@ -1,0 +1,30 @@
+{
+    "LOCAL_DIR": "/home/jso/repos/rt_expired/extract",
+    "TRANSFER_LOG": "transfer_log.log",
+    "SRC": {
+        "HOST": "ed_nas",
+        "CTR_DIR": "~/honeyData/vz/root"
+    },
+    "DST": {
+        "1": {
+            "HOST": "rt_shipper_1",
+            "CTR_DIR": "~/data"
+        },
+        "2": {
+            "HOST": "rt_shipper_2",
+            "CTR_DIR": "~/data"
+        },
+        "3": {
+            "HOST": "rt_shipper_3",
+            "CTR_DIR": "~/data"
+        },
+        "4": {
+            "HOST": "rt_shipper_4",
+            "CTR_DIR": "~/data"
+        },
+        "5": {
+            "HOST": "rt_shipper_5",
+            "CTR_DIR": "~/data"
+        }
+    }
+}
