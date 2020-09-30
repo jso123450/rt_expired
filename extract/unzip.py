@@ -100,12 +100,10 @@ def unzip():
     unzipped = 0
     while len(ctrs) > 0 and unzipped < CHUNK_SIZE:
         free_space = get_free_space()
-        LOGGER.debug(f"  du: {free_space}")
-        if not should_run(free_space):
-            break
         num_files = get_num_files()
+        LOGGER.debug(f"  du: {free_space}")
         LOGGER.debug(f"  num_files: {num_files}")
-        if num_files > FILES_THRESHOLD:
+        if not should_run(free_space) or num_files > FILES_THRESHOLD:
             break
         next_ctr = get_next_ctr(ctrs)
         ctrs = ctrs[ctrs.index(next_ctr) :]
