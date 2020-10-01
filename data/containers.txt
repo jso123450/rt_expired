@@ -1,9 +1,4 @@
 CTID HOSTNAME
-382 newhoney1-com
-384 newhoney3-com
-386 newhoney5-com
-388 newhoney7-com
-390 newhoney9-com
 612 old_ipv6tracker-org
 613 ipv6trackerorg
 616 leon418-com

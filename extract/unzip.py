@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 import subprocess
 from string import Template
 import sys
@@ -15,10 +16,21 @@ GUNZIP_TEMP = Template(
 FREE_SPACE_CMD = "df -h | grep -w '/dev/vda1' | awk '{print $3}'"
 SPACE_THRESHOLD = "25G"
 FILES_THRESHOLD = 50_000
+CTR_PROGRESS_FILE = Path("/home/ubuntu/ingestion_progress.log")
 
 logging.basicConfig(filename="/home/ubuntu/unzip.log", format=LOG_FMT, level=logging.DEBUG)
 LOGGER = logging.getLogger("unzip")
 LOGGER.addHandler(logging.StreamHandler(sys.stdout))
+
+
+def get_finished_ctrs():
+    try:
+        with open(CTR_PROGRESS_FILE, "r") as f:
+            finished_ctrs = f.readlines()
+            finished_ctrs = [ctr.strip() for ctr in finished_ctrs]
+            return finished_ctrs
+    except FileNotFoundError:
+        return []
 
 
 def get_ctrs():
@@ -43,12 +55,14 @@ def get_num_files():
 
 
 def get_next_ctr(ctrs):
-    for ctr in ctrs:
+    finished_ctrs = get_finished_ctrs()
+    rest = [ctr for ctr in ctrs if ctr not in finished_ctrs]
+    for ctr in rest:
         cmd = get_find_cmd(ctr)
         res = run_cmd(cmd, output=True)
         if len(res) > 0:
             return ctr
-    return len(ctrs)
+    return len(rest)
 
 
 def get_gunzip_cmd(ctr):
@@ -94,6 +108,15 @@ def should_run(free_space):
     return curr_space < thresh
 
 
+def write_finished_ctrs(ctrs):
+    finished = ""
+    for ctr in ctrs:
+        finished += f"{ctr}\n"
+    finished = finished[:-1]
+    with open(CTR_PROGRESS_FILE, "w") as f:
+        f.write(finished)
+
+
 def unzip():
     ctrs = get_ctrs()
     LOGGER.debug(f"got ctrs")
@@ -101,11 +124,14 @@ def unzip():
     while len(ctrs) > 0 and unzipped < CHUNK_SIZE:
         free_space = get_free_space()
         num_files = get_num_files()
+        next_ctr = get_next_ctr(ctrs)
+        finished_ctrs = ctrs[: ctrs.index(next_ctr)]  # check for update
+        write_finished_ctrs(finished_ctrs)  # (over)write
         LOGGER.debug(f"  du: {free_space}")
         LOGGER.debug(f"  num_files: {num_files}")
+        LOGGER.debug(f"  finished ctrs: {len(finished_ctrs)}")
         if not should_run(free_space) or num_files > FILES_THRESHOLD:
             break
-        next_ctr = get_next_ctr(ctrs)
         ctrs = ctrs[ctrs.index(next_ctr) :]
         ctr = ctrs.pop(0)
         unzipped += 1
