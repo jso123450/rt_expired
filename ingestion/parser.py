@@ -1,4 +1,4 @@
-from types import LogType
+from enum_types import LogType
 
 
 def _parse_nginx(line):
@@ -44,7 +44,6 @@ def parse(filename):
         generator that yields documents for es.bulk
         {
             '_index': '{service}-YYYY-MM',
-            '_id': 42,
             '_source': {
                 "title": "Hello World!",
                 "body": "..."

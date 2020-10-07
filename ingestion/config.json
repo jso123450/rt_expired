@@ -1,9 +1,16 @@
 {
-    "DATA_DIRS": {
-        "NGINX": "/home/ubuntu/data/*/var/log/nginx*",
-        "TELNET": "/home/ubuntu/data/*/var/log/telnet*",
-        "FTP": "/home/ubuntu/data/*/var/log/ftp*",
-        "SSH": "/home/ubuntu/data/*/home/cowrie/cowrie/log/cowrie.json*",
-        "SMTP": "/home/ubuntu/data/*/var/log/mail*"
+    "HOME_DIR": "/home/ubuntu",
+    "LOG_PATH": "log.log",
+    "SORTED_CTRS_PATH": "sorted.txt",
+    "FINISHED_CTRS_PATH": "finished.txt",
+    "RAW_DIR": "/home/ubuntu/data",
+    "PROCESS_DIR": "process",
+    "MALFORMATTED_DIR": "malformatted",
+    "GLOBS": {
+        "NGINX": "var/log/nginx*",
+        "TELNET": "var/log/telnet*",
+        "FTP": "var/log/ftp*",
+        "SSH": "home/cowrie/cowrie/log/cowrie.json*",
+        "SMTP": "var/log/mail*"
     }
 }

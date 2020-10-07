@@ -1,8 +1,9 @@
 import csv
 import json
 import logging
-import sys
 from pathlib import Path
+import subprocess
+import sys
 
 
 BASE_DIR = Path("/home/jso/repos/rt_expired")
@@ -13,7 +14,7 @@ LOG_FMT = "%(name)s %(levelname)s %(asctime)-15s %(message)s"
 LOGGER = None
 
 
-def get_logger(name, filename, level):
+def get_logger(name, filename, level=logging.DEBUG):
     global LOGGER
     if LOGGER is None:
         logging.basicConfig(filename=filename, format=LOG_FMT, level=level)
@@ -35,7 +36,7 @@ def _get_containers(_file):
             if idx == 0:
                 continue
             ctid, ip, domain = line.rstrip().split(" ")
-            ctids[int(ctid)] = {"ip": ip, "domain": domain}
+            ctids[ctid] = {"ip": ip, "domain": domain}
     return ctids
 
 
@@ -52,3 +53,12 @@ def get_nonplacebos():
 
 def get_placebos():
     return _get_containers(PLACEBOS_FILE)
+
+
+def run_cmd(cmd, output=False, check=False):
+    if output:
+        proc = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, check=check)
+        return proc.stdout.decode("utf-8")
+    else:
+        proc = subprocess.run(cmd, shell=True, check=check)
+        return None
