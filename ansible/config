@@ -8,6 +8,16 @@ Host rt_expired_2
     User ubuntu
     ProxyCommand ssh -W %h:%p rt_expired_1
 
+Host rt_expired_3
+    HostName 192.168.1.77
+    User ubuntu
+    ProxyCommand ssh -W %h:%p rt_expired_1
+
+Host rt_expired_4
+    HostName 192.168.1.78
+    User ubuntu
+    ProxyCommand ssh -W %h:%p rt_expired_1
+
 Host rt_shipper_1
     HostName 192.168.1.75
     User ubuntu
