@@ -1,53 +1,52 @@
-CTID HOSTNAME
-647 placebo-0
-648 placebo-1
-649 placebo-2
-650 placebo-3
-651 placebo-4
-652 placebo-5
-653 placebo-6
-654 placebo-7
-655 placebo-8
-656 placebo-9
-714 placebo_10
-715 placebo_11
-716 placebo_12
-717 placebo_13
-718 placebo_14
-719 placebo_15
-720 placebo_16
-721 placebo_17
-722 placebo_18
-723 placebo_19
-724 placebo_20
-725 placebo_21
-726 placebo_22
-727 placebo_23
-728 placebo_24
-729 placebo_25
-754 placebo_sinkhole_all
-802 placebo_26
-803 placebo_27
-804 placebo_28
-805 placebo_29
-806 placebo_30
-807 placebo_31
-808 placebo_32
-809 placebo_33
-810 placebo_34
-811 placebo_35
-812 placebo_36
-813 placebo_37
-814 placebo_38
-815 placebo_39
-816 placebo_40
-817 placebo_41
-818 placebo_42
-819 placebo_43
-820 placebo_44
-821 placebo_45
-822 placebo_46
-823 placebo_47
-824 placebo_48
-825 placebo_49
-826 placebo_50
+647 130.245.135.27 placebo-0
+648 130.245.135.28 placebo-1
+649 130.245.135.29 placebo-2
+650 130.245.135.30 placebo-3
+651 130.245.135.31 placebo-4
+652 130.245.135.32 placebo-5
+653 130.245.135.33 placebo-6
+654 130.245.135.34 placebo-7
+655 130.245.135.35 placebo-8
+656 130.245.135.36 placebo-9
+714 130.245.135.82 placebo_10
+715 130.245.135.87 placebo_11
+716 130.245.135.88 placebo_12
+717 130.245.135.89 placebo_13
+718 130.245.135.90 placebo_14
+719 130.245.135.91 placebo_15
+720 130.245.135.92 placebo_16
+721 130.245.135.93 placebo_17
+722 130.245.135.94 placebo_18
+723 130.245.135.95 placebo_19
+724 130.245.135.96 placebo_20
+725 130.245.135.97 placebo_21
+726 130.245.135.98 placebo_22
+727 130.245.135.99 placebo_23
+728 130.245.136.10 placebo_24
+729 130.245.136.11 placebo_25
+754 130.245.136.28 placebo_sinkhole_all
+802 130.245.136.81 placebo_26
+803 130.245.136.82 placebo_27
+804 130.245.136.83 placebo_28
+805 130.245.136.84 placebo_29
+806 130.245.136.85 placebo_30
+807 130.245.136.86 placebo_31
+808 130.245.136.87 placebo_32
+809 130.245.136.88 placebo_33
+810 130.245.136.89 placebo_34
+811 130.245.136.90 placebo_35
+812 130.245.136.91 placebo_36
+813 130.245.136.92 placebo_37
+814 130.245.136.93 placebo_38
+815 130.245.136.94 placebo_39
+816 130.245.136.95 placebo_40
+817 130.245.136.96 placebo_41
+818 130.245.136.97 placebo_42
+819 130.245.136.98 placebo_43
+820 130.245.136.99 placebo_44
+821 130.245.135.100 placebo_45
+822 130.245.135.101 placebo_46
+823 130.245.135.102 placebo_47
+824 130.245.135.103 placebo_48
+825 130.245.135.104 placebo_49
+826 130.245.135.105 placebo_50

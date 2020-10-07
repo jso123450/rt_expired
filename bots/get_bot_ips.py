@@ -22,15 +22,16 @@ INDICES_MAPPING = {
     "telnet-*": "telnet.ip.keyword",
     "ftp-*": "ftp.ip.keyword",
 }
-BOT_IPS = Path("../data/bots.json")
-LOGGER = utils.get_logger(__name__, logging.INFO)
+BOT_IPS_CTR_IDX_FILE = Path("../data/bot_ips_by_ctr_idx.json")
+BOT_IPS_FILE = Path("../data/bot_ips")
+LOGGER = utils.get_logger(__name__, "./log.log", logging.INFO)
 CHECK_AGAIN = False
 
 
 def init_ctr_logs():
     ctr_logs = defaultdict(lambda: defaultdict(list))
     try:
-        with open(BOT_IPS, "r") as f:
+        with open(BOT_IPS_CTR_IDX_FILE, "r") as f:
             loaded = json.loads(f.read())
         for ctr in loaded:  # keep it the defaultdict(...)
             for idx_ptrn in loaded[ctr]:
@@ -41,7 +42,7 @@ def init_ctr_logs():
 
 
 def write_ctr_logs(ctr_logs):
-    with open(BOT_IPS, "w+") as f:
+    with open(BOT_IPS_CTR_IDX_FILE, "w+") as f:
         json.dump(ctr_logs, f)
 
 
@@ -106,3 +107,17 @@ for idx, ctr in enumerate(PLACEBOS):
     LOGGER.info(f"  found_results={found_results}")
     if found_results:
         write_ctr_logs(ctr_logs)
+
+all_ips = set()
+for ctr in ctr_logs:
+    for idx_ptrn in ctr_logs[ctr]:
+        all_ips.update(set(ctr_logs[ctr][idx_ptrn]))
+
+
+with open(BOT_IPS_FILE, "w+") as f:
+    sorted_ips = sorted(all_ips)
+    out = ""
+    for ip in sorted_ips:
+        out += f"{ip}\n"
+    out = out[:-1]
+    f.write(out)

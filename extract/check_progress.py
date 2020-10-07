@@ -1,3 +1,4 @@
+from collections import defaultdict
 import json
 from pathlib import Path
 import subprocess
@@ -40,9 +41,21 @@ def get_finished_placebos(ctrs, finished):
     placebos = []
     for shipper in finished:
         for ctid in finished[shipper]:
-            if "placebo" in ctrs[ctid]:
+            if "placebo" in ctrs[ctid]["domain"]:
                 placebos.append(ctid)
     return placebos
+
+
+def get_repeat_ips(ctrs):
+    ips = defaultdict(list)
+    for ctid in ctrs:
+        obj = ctrs[ctid]
+        ips[obj["ip"]].append(ctid)
+    repeats = {}
+    for ip in ips:
+        if len(ips[ip]) > 1:
+            repeats[ip] = ips[ip]
+    return repeats
 
 
 def main():
@@ -51,6 +64,11 @@ def main():
     total_finished = 0
     total_ctrs = 0
     ctrs = utils.get_containers()
+
+    # repeats = get_repeat_ips(ctrs)
+    # pdb.set_trace()
+    # print(f"Repeats {repeats}")
+
     for shipper in SHIPPERS:
         finished[shipper] = get_finished_ctrs(shipper)
         shipper_ctrs = get_shipper_ctrs(shipper)
@@ -65,7 +83,7 @@ def main():
     write_finished_ctrs(finished)
 
     missing = get_missing_ctrs(ctrs, shippers)
-    print(f"Missing {missing}")
+    print(f"Missing {len(missing)} {missing}")
 
 
 if __name__ == "__main__":

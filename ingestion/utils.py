@@ -2,13 +2,13 @@ import csv
 import json
 import logging
 import sys
+from pathlib import Path
 
-# import pdb
 
-
-CONFIG_FILE = "/home/jso/repos/rt_expired/extract/config.json"
-CONTAINERS_FILE = "/home/jso/repos/rt_expired/data/containers.txt"
-PLACEBOS_FILE = "/home/jso/repos/rt_expired/data/placebos.txt"
+BASE_DIR = Path("/home/jso/repos/rt_expired")
+CONFIG_FILE = BASE_DIR / "ingestion/config.json"
+CONTAINERS_FILE = BASE_DIR / "data/containers.txt"
+PLACEBOS_FILE = BASE_DIR / "data/placebos.txt"
 LOG_FMT = "%(name)s %(levelname)s %(asctime)-15s %(message)s"
 LOGGER = None
 
