@@ -9,6 +9,10 @@
             "container": "{id}",
             "path": "{path}",
             "line": 42
+        },
+        "ip" : "...",
+        "geoip" : {
+            "parsed using python-geoip-geolite2"
         }
     }
 }
@@ -17,29 +21,72 @@
 ## nginx
 ```json
 {
-    "_index" : "nginx-{access/error}-YYYY-MM-{bad}",
+    "_index" : "{bad-}nginx-{access/error}-YYYY.MM",
+    "_type" : "nginx-{access/error}",
     "_source" : {
-        "access" : {
-            "ip" : "...",
-            "method" : "{GET/POST/...}",
-            "user_name" : "...",
-            "path" : "...",
-            "response_code" : "...",
-            "response_size" : "...",
-            "referrer" : "...",
-            "agent" : "..."
-        },
-        "error" : {
-
+        "nginx": {
+            "access" : {
+                "method" : "{GET/POST/...}",
+                "user_name" : "...",
+                "path" : "...",
+                "response_code" : "...",
+                "response_size" : "...",
+                "referrer" : "...",
+                "user_agent" : {
+                    "parsed user agent using uap-python"
+                }
+            },
+            "error" : {
+                "level": "...",
+                "pid": "...",
+                "tid": "...",
+                "connection_id": "...",
+                "message": "..."
+            }
         }
+        
     }
 }
 ```
 
 ## telnet
+```json
+{
+    "_index" : "telnet-YYYY.MM",
+    "_type" : "ftp",
+    "_source" : {
+        "ftp": {
+            "user": "...",
+            "password": "..."
+        }
+    }
+}
+```
 
 ## ftp
+```json
+{
+    "_index" : "ftp-YYYY.MM",
+    "_type" : "ftp",
+    "_source" : {
+        "ftp": {
+            "user": "...",
+            "password": "..."
+        }
+    }
+}
+```
 
 ## ssh
+```json
+{
+    "_index" : "ssh-YYYY.MM",
+    "_type" : "ssh",
+    "_source" : {
+        "cowrie_log"
+    }
+}
+```
 
-## smtp
+## postfix
+Mirror the structure from the `postfix` Logstash grok patterns.
