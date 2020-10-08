@@ -1,16 +1,27 @@
 {
-    "HOME_DIR": "/home/ubuntu",
-    "LOG_PATH": "log.log",
-    "SORTED_CTRS_PATH": "sorted.txt",
-    "FINISHED_CTRS_PATH": "finished.txt",
-    "RAW_DIR": "/home/ubuntu/data",
-    "PROCESS_DIR": "process",
-    "MALFORMATTED_DIR": "malformatted",
-    "GLOBS": {
-        "NGINX": "var/log/nginx*",
-        "TELNET": "var/log/telnet*",
-        "FTP": "var/log/ftp*",
-        "SSH": "home/cowrie/cowrie/log/cowrie.json*",
-        "SMTP": "var/log/mail*"
+    "SCANNER": {
+        "SPACE_THRESHOLD": "20G",
+        "HOME_DIR": "/mnt/nas_process/",
+        "LOG_PATH": "log.log",
+        "SORTED_CTRS_PATH": "sorted.txt",
+        "PROCESSING_CTRS_PATH": "processing.txt",
+        "FINISHED_CTRS_PATH": "finished.txt",
+        "RAW_DIR": "/mnt/nas/vz/root",
+        "PROCESS_DIR": "process",
+        "MALFORMATTED_DIR": "malformatted",
+        "GLOBS": {
+            "NGINX": "var/log/nginx*",
+            "TELNET": "var/log/telnet*",
+            "FTP": "var/log/ftp*",
+            "SSH": "home/cowrie/cowrie/log/cowrie.json*",
+            "SMTP": "var/log/mail*"
+        }
+    },
+    "INDEXER": {
+        "LOG_PATH": "log.log",
+        "HOSTS": [
+            "http://192.168.1.82:9200"
+        ],
+        "MAX_RETRIES": 5
     }
 }

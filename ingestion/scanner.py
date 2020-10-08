@@ -11,14 +11,16 @@ import utils
 
 ########################################################
 
-CONFIG = utils.load_config()
-LOGGER = utils.get_logger("scanner", CONFIG["LOG_PATH"])
+CONFIG = utils.load_config()["SCANNER"]
+LOGGER = utils.get_logger("scanner", f"{CONFIG['HOME_DIR']}/{CONFIG['LOG_PATH']}")
 
 SORTED_CTRS_KEY = "SORTED_CTRS_PATH"
+PROCESSING_CTRS_KEY = "PROCESSING_CTRS_PATH"
 FINISHED_CTRS_KEY = "FINISHED_CTRS_PATH"
 HOME_DIR_KEY = "HOME_DIR"
 RAW_DIR_KEY = "RAW_DIR"
 PROCESS_DIR_KEY = "PROCESS_DIR"
+SPACE_THRESHOLD_KEY = "SPACE_THRESHOLD"
 
 ########################################################
 
@@ -44,6 +46,19 @@ def get_gunzip_err_cmd(tmpfile):
 
 def get_sort_ctrs_cmd(raw_dir):
     return "du -sh " + raw_dir + "/* | sort -h | awk '{print $2}'"
+
+
+def get_free_space_cmd():
+    return "df -h | grep -w '/dev/vda1' | awk '{print $3}'"
+
+
+def get_cp_cmd(ctr):
+    src = CONFIG[RAW_DIR_KEY]
+    dst = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
+    cmd = Template(
+        f"cd {src} && find $ctr -type f -name '*.gz' -exec cp --parents '{{}}' {dst}/ ';'"
+    )
+    return cmd.substitute(ctr=ctr)
 
 
 ########################################################
@@ -116,12 +131,18 @@ def mv_gunzip_errs(tmpfile):
 def unzip_container(ctr):
     pdb.set_trace()
 
+    # get the corresponding paths
     raw_path = get_raw_prefix(ctr)
     dst = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
+
+    # ensure the container has a folder
     mkdir_cmd = f"mkdir -p {dst}"
     utils.run_cmd(mkdir_cmd, output=False, check=False)
-    cp_cmd = f"cp -r {raw_path} {dst}"
+
+    # copy over to the processing folder
+    cp_cmd = get_cp_cmd(ctr)
     utils.run_cmd(cp_cmd, output=False, check=False)
+
     gunzip_cmd = get_gunzip_cmd(dst / ctr)
     with tempfile.NamedTemporaryFile() as tmpfile:
         gunzip_cmd += f" >> {tmpfile.name} 2>&1"
@@ -163,7 +184,7 @@ def scan():
     return ctr, srvc_files
 
 
-def cleanup_processed_container(ctr):
+def cleanup(ctr):
     pdb.set_trace()
     process_dir = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
     ctr_path = process_dir / ctr
@@ -181,4 +202,4 @@ if __name__ == "__main__":
     for srvc in srvc_files:
         for filename in srvc_files[srvc]:
             print(filename)
-    cleanup_processed_container(ctr)
+    cleanup(ctr)
