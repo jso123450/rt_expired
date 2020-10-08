@@ -189,6 +189,9 @@ def cleanup(ctr):
     process_dir = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
     ctr_path = process_dir / ctr
     cmd = f"rm -rf {ctr_path}"
+    if "/mnt/nas/" in cmd:
+        LOGGER.fatal(f"trying to remove raw dir {cmd}")
+        return
     utils.run_cmd(cmd, output=False, check=False)
     LOGGER.debug(f"\t cleaned up {ctr_path}")
 
