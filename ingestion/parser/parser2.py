@@ -94,10 +94,8 @@ def parseNginx(filename):
             for pattern in nginx_access_patterns:
                 data = pattern.match(line.decode())
 
-                if data is None:
-                    continue
-                
-                if "method" in data and data["method"] not in HTTP_METHODS:
+                if data is None or \
+					("method" in data and data["method"] not in HTTP_METHODS):
                     continue
             
             if data is not None:
