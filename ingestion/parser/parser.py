@@ -6,8 +6,6 @@ from datetime import datetime
 
 ftp_matcher = [Grok(ftp_pat) for ftp_pat in ftp_patterns]
 
-f = gzip.open(sys.argv[1], 'rb')
-
 def parse_as_ftp(string):
 	for matcher in ftp_matcher:
 		match = matcher.match(line.decode())
@@ -53,8 +51,14 @@ def parse_as_postfix(string):
 		if match != None:
 			print(match)
 
-for line in f:
-	print(line)
-	parse_as_postfix(line)
+def parse_file_as_ftp(fname):
+	f = gzip.open(fname, 'rb')
+	for line in f:
+		parse_as_ftp(line)
+	f.close()
 
-f.close()
+def parse_file_as_ssh(fname):
+	f = gzip.open(fname, 'rb')
+	for line in f:
+		parse_as_ssh(line)
+	f.close()
