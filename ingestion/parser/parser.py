@@ -4,11 +4,14 @@ import re
 from pygrok import Grok
 from datetime import datetime
 
+ftp_patterns = [
+	"%{GREEDYDATA:timestamp} : %{IP:ip} : %{GREEDYDATA:user} : %{GREEDYDATA:password}",
+]
 ftp_matcher = [Grok(ftp_pat) for ftp_pat in ftp_patterns]
 
 def parse_as_ftp(string):
 	for matcher in ftp_matcher:
-		match = matcher.match(line.decode())
+		match = matcher.match(string.decode())
 		if match != None:
 			ftp = match
 			timestamp = ftp['timestamp']
@@ -24,6 +27,7 @@ def parse_as_ftp(string):
 					"@timestamp": timestamp
 				},
 			}
+	return None
 
 def parse_as_ssh(string):
 	ssh = json.loads(string)
@@ -39,7 +43,6 @@ def parse_as_ssh(string):
 
 postfix_prefix = "%{SYSLOGTIMESTAMP:timestamp} %{SYSLOGHOST} %{DATA:program}(?:\[%{POSINT}\])?: %{GREEDYDATA:message}"
 postfix_patterns = [
-	#POSTFIX_QMGR_EXPIRED 
 	"%{WORD:postfix_queueid}: from=<%{DATA:postfix_from}>, status=%{WORD:postfix_status}, returned to sender",
 ]
 postfix_matcher = [Grok(postfix_prefix) for postfix_pat in postfix_patterns]
@@ -53,12 +56,15 @@ def parse_as_postfix(string):
 
 def parse_file_as_ftp(fname):
 	f = gzip.open(fname, 'rb')
-	for line in f:
-		parse_as_ftp(line)
+	parsed = [parse_as_ftp(line) for line in f]
 	f.close()
+	return parsed
 
 def parse_file_as_ssh(fname):
 	f = gzip.open(fname, 'rb')
-	for line in f:
-		parse_as_ssh(line)
+	parsed = [parse_as_ssh(line) for line in f]
 	f.close()
+	return parsed
+
+# parse_file_as_ssh(sys.argv[1])
+# parse_file_as_ftp(sys.argv[1])
