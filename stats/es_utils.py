@@ -1,6 +1,7 @@
 from collections import defaultdict
 import json
 from pathlib import Path
+import re
 
 from elasticsearch_dsl import Search, A
 import pandas as pd
@@ -10,6 +11,8 @@ import utils
 # from utils
 LOGGER = utils.get_logger("es_utils", "./es_utils.log")
 CONFIG = utils.get_config()
+SEP = CONFIG["IO"]["CSV_SEP"]
+CHUNKSIZE = CONFIG["IO"]["CHUNK_SIZE"]
 CTRS = utils.get_containers()
 TIME_FMT = CONFIG["TIME"]["FMT"]
 
@@ -20,8 +23,8 @@ INDICES_IP_MAPPING = {
     "telnet-*": "telnet.ip.keyword",
     "ftp-*": "ftp.ip.keyword",
 }
-ALL_SRVC_UNIQUE_IPS_DF = Path("../data/all_srvc_unique_ips.csv")
-FILTERED_SRVC_UNIQUE_IPS_DF = Path("../data/filtered_srvc_unique_ips.csv")
+ALL_SRVC_UNIQUE_IPS_DF = Path(CONFIG["ARTIFACT_DIR"]) / "all_srvc_unique_ips.csv"
+FILTERED_SRVC_UNIQUE_IPS_DF = Path(CONFIG["ARTIFACT_DIR"]) / "filtered_srvc_unique_ips.csv"
 
 
 # def init_ctr_logs(path):
@@ -87,7 +90,7 @@ def scan_idx_aggs(
     time_fmt=TIME_FMT,
 ):
     _file = open(csv, "w+")
-    cols_str = "|".join(cols)
+    cols_str = SEP.join(cols)
     _file.write(f"{cols_str}\n")
     try:
         for idx, idx_ptrn in enumerate(indices):
@@ -107,17 +110,18 @@ def scan_idx_aggs(
             for idx, bucket in enumerate(scan_aggs(s, source_aggs_map[idx_ptrn], size=1_000)):
                 if idx % 100_000 == 0:
                     LOGGER.info(f"  at bucket {idx}...")
-                row = process_bucket(idx_ptrn, bucket)
-                _file.write(row)
+                row = process_bucket(bucket)
+                if row is not None:
+                    _file.write(row)
     finally:
         _file.close()
-    return pd.read_csv(csv, header=0, sep="|")
+    return pd.read_csv(csv, header=0, sep=re.escape(SEP))
 
 
 def query_scan_idx_aggs(csv, source_aggs_map, indices, process_bucket, cols, filter_time):
     df = None
     try:
-        df = pd.read_csv(csv, header=0, sep="|")
+        df = pd.read_csv(csv, header=0, sep=re.escape(SEP))
         LOGGER.info(f"Loaded from {csv}.")
     except FileNotFoundError:
         df = scan_idx_aggs(
@@ -170,6 +174,7 @@ def get_ip_domain(ctid, ctrs):
 def add_ip_domain_cols(df, ctrs):
     df["ip"] = df["id"].apply(lambda x: get_ip_domain(x, ctrs)[0])
     df["domain"] = df["id"].apply(lambda x: get_ip_domain(x, ctrs)[1])
+    df = df.astype({"ip": "string", "domain": "string"})
     return df
 
 
@@ -191,7 +196,8 @@ def get_srvc_unique_ips(csv, filter_time=False):
         ip, domain = get_ip_domain(bucket.key.ctid, CTRS)
         if ip is None or domain is None:
             return None
-        output = f"{ctid}|{domain}|{ip}|{idx_ptrn}|{client_ip}|{bucket.doc_count}\n"
+        row = [ctid, domain, ip, idx_ptrn, client_ip, str(bucket.doc_count)]
+        output = f"{SEP.join(row)}\n"
         return output
 
     source_aggs = [{"ctid": A("terms", field="container.id.keyword")}]

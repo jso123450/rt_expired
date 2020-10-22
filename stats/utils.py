@@ -1,13 +1,16 @@
 import json
 import logging
+from pathlib import Path
 import sys
 
 # import pdb
 
+from elasticsearch_dsl.connections import connections
 
-CONFIG_FILE = "/home/jso/repos/rt_expired/stats/config.json"
-CONTAINERS_FILE = "/home/jso/repos/rt_expired/data/containers.txt"
-PLACEBOS_FILE = "/home/jso/repos/rt_expired/data/placebos.txt"
+CONFIG_FILE = Path("~/repos/rt_expired/stats/config.json").expanduser()
+CONTAINERS_FILE = Path("~/repos/rt_expired/data/containers.txt").expanduser()
+PLACEBOS_FILE = Path("~/repos/rt_expired/data/placebos.txt").expanduser()
+
 LOG_FMT = "%(name)s %(levelname)s %(asctime)-15s %(message)s"
 LOGGER = None
 CONFIG = None
@@ -27,6 +30,8 @@ def get_config():
     if CONFIG is None:
         with open(CONFIG_FILE) as f:
             CONFIG = json.load(f)
+    es_config = CONFIG["ELASTICSEARCH"]
+    connections.configure(default={"hosts": es_config["HOSTS"], "timeout": es_config["TIMEOUT"]})
     return CONFIG
 
 
