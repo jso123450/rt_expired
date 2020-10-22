@@ -1,0 +1,15 @@
+{
+    "TIME": {
+        "FMT": "yyyy-MM-dd",
+        "WINDOWS": {
+            "postfix-smtp-*": {
+                "START": "2020-08-01",
+                "END": "2020-12-01"
+            },
+            "DEFAULT": {
+                "START": "2019-08-01",
+                "END": "2019-12-01"
+            }
+        }
+    }
+}
