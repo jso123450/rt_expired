@@ -9,11 +9,15 @@
 # stdlib
 import argparse
 import time
+import pdb
 
 # proj
 import indexer
 import scanner
 import utils
+
+# constants
+SLEEP_DUR = 10
 
 
 def parse_args():
@@ -23,6 +27,7 @@ def parse_args():
 
 def main():
     # args = parse_args()
+    # pdb.set_trace()
 
     # scan and unzip
     ctr, srvc_files = scanner.scan()
@@ -35,5 +40,7 @@ def main():
 
 
 if __name__ == "__main__":
-    while True:
-        main()
+    # while True:
+    #     main()
+    #     time.sleep(SLEEP_DUR)
+    main()

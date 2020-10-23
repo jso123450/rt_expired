@@ -20,7 +20,6 @@ FINISHED_CTRS_KEY = "FINISHED_CTRS_PATH"
 HOME_DIR_KEY = "HOME_DIR"
 RAW_DIR_KEY = "RAW_DIR"
 PROCESS_DIR_KEY = "PROCESS_DIR"
-SPACE_THRESHOLD_KEY = "SPACE_THRESHOLD"
 
 ########################################################
 
@@ -36,29 +35,25 @@ def get_raw_prefix(path):
 ########################################################
 
 
-def get_gunzip_cmd(ctr_path):
-    return f"gunzip -rf {ctr_path}"
+# def get_gunzip_cmd(ctr_path):
+#     return f"gunzip -rf {ctr_path}"
 
 
-def get_gunzip_err_cmd(tmpfile):
-    return "cat " + tmpfile + " | egrep 'gzip format|unexpected' | awk '{print $2}'"
+# def get_gunzip_err_cmd(tmpfile):
+#     return "cat " + tmpfile + " | egrep 'gzip format|unexpected' | awk '{print $2}'"
 
 
 def get_sort_ctrs_cmd(raw_dir):
     return "du -sh " + raw_dir + "/* | sort -h | awk '{print $2}'"
 
 
-def get_free_space_cmd():
-    return "df -h | grep -w '/dev/vda1' | awk '{print $3}'"
-
-
-def get_cp_cmd(ctr):
-    src = CONFIG[RAW_DIR_KEY]
-    dst = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
-    cmd = Template(
-        f"cd {src} && find $ctr -type f -name '*.gz' -exec cp --parents '{{}}' {dst}/ ';'"
-    )
-    return cmd.substitute(ctr=ctr)
+# def get_cp_cmd(ctr):
+#     src = CONFIG[RAW_DIR_KEY]
+#     dst = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
+#     cmd = Template(
+#         f"cd {src} && find $ctr -type f -name '*.gz' -exec cp --parents '{{}}' {dst}/ ';'"
+#     )
+#     return cmd.substitute(ctr=ctr)
 
 
 ########################################################
@@ -66,7 +61,6 @@ def get_cp_cmd(ctr):
 
 def get_ctrs():
     """ Returns valid containers sorted in ascending order by disk usage. """
-    sorted_ctrs_path = get_home_prefix(CONFIG[SORTED_CTRS_KEY])
     ctrs = get_ctrs_from_file(SORTED_CTRS_KEY)
     if len(ctrs) == 0:
         running_containers = utils.get_containers()  # get running containers
@@ -111,51 +105,51 @@ def get_unfinished_ctrs():
 ########################################################
 
 
-def mv_gunzip_errs(tmpfile):
-    cmd = get_gunzip_err_cmd(tmpfile)
-    res = utils.run_cmd(cmd, output=True).split("\n")
-    err_files = []
-    for line in res:
-        line = line[:-1]  # get rid of the colon (:) at the end
-        if len(line) == 0:
-            continue
-        dst = line.replace(CONFIG[RAW_DIR_KEY], get_home_prefix(CONFIG["MALFORMATTED_DIR"]))
-        dst_dir = dst[: dst.rindex("/")]
-        mkdir_cmd = f"mkdir -p {dst_dir}"
-        utils.run_cmd(mkdir_cmd, output=False, check=False)
-        mv_cmd = f"mv {line} {dst_dir}"
-        utils.run_cmd(mv_cmd, output=False, check=False)
-        LOGGER.debug(f"\t {mv_cmd}")
+# def mv_gunzip_errs(tmpfile):
+#     cmd = get_gunzip_err_cmd(tmpfile)
+#     res = utils.run_cmd(cmd, output=True).split("\n")
+#     err_files = []
+#     for line in res:
+#         line = line[:-1]  # get rid of the colon (:) at the end
+#         if len(line) == 0:
+#             continue
+#         dst = line.replace(CONFIG[RAW_DIR_KEY], get_home_prefix(CONFIG["MALFORMATTED_DIR"]))
+#         dst_dir = dst[: dst.rindex("/")]
+#         mkdir_cmd = f"mkdir -p {dst_dir}"
+#         utils.run_cmd(mkdir_cmd, output=False, check=False)
+#         mv_cmd = f"mv {line} {dst_dir}"
+#         utils.run_cmd(mv_cmd, output=False, check=False)
+#         LOGGER.debug(f"\t {mv_cmd}")
 
 
-def unzip_container(ctr):
-    pdb.set_trace()
+# def unzip_container(ctr):
+#     # pdb.set_trace()
 
-    # get the corresponding paths
-    raw_path = get_raw_prefix(ctr)
-    dst = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
+#     # get the corresponding paths
+#     raw_path = get_raw_prefix(ctr)
+#     dst = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
 
-    # ensure the container has a folder
-    mkdir_cmd = f"mkdir -p {dst}"
-    utils.run_cmd(mkdir_cmd, output=False, check=False)
+#     # ensure the container has a folder
+#     mkdir_cmd = f"mkdir -p {dst}"
+#     utils.run_cmd(mkdir_cmd, output=False, check=False)
 
-    # copy over to the processing folder
-    cp_cmd = get_cp_cmd(ctr)
-    utils.run_cmd(cp_cmd, output=False, check=False)
+#     # copy over to the processing folder
+#     cp_cmd = get_cp_cmd(ctr)
+#     utils.run_cmd(cp_cmd, output=False, check=False)
 
-    gunzip_cmd = get_gunzip_cmd(dst / ctr)
-    with tempfile.NamedTemporaryFile() as tmpfile:
-        gunzip_cmd += f" >> {tmpfile.name} 2>&1"
-        try:
-            LOGGER.debug(f"\t gunzip'ing {ctr}: {gunzip_cmd}")
-            utils.run_cmd(gunzip_cmd, output=False, check=True)
-        except subprocess.CalledProcessError as e:
-            if e.returncode == 2:
-                LOGGER.warning(f"\t gunzip warning {ctr}: {e}")
-            else:
-                LOGGER.error(f"\t gunzip err {ctr}: {e}")
-            # pdb.set_trace()
-            mv_gunzip_errs(tmpfile.name)
+#     gunzip_cmd = get_gunzip_cmd(dst / ctr)
+#     with tempfile.NamedTemporaryFile() as tmpfile:
+#         gunzip_cmd += f" >> {tmpfile.name} 2>&1"
+#         try:
+#             LOGGER.debug(f"\t gunzip'ing {ctr}: {gunzip_cmd}")
+#             utils.run_cmd(gunzip_cmd, output=False, check=True)
+#         except subprocess.CalledProcessError as e:
+#             if e.returncode == 2:
+#                 LOGGER.warning(f"\t gunzip warning {ctr}: {e}")
+#             else:
+#                 LOGGER.error(f"\t gunzip err {ctr}: {e}")
+#             # pdb.set_trace()
+#             mv_gunzip_errs(tmpfile.name)
 
 
 ########################################################
@@ -168,32 +162,33 @@ def scan():
     -------
     ctr, srvc_files : str, {service : iterator}
     """
-    pdb.set_trace()
-    process_dir = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
+    # pdb.set_trace()
 
     unfinished = get_unfinished_ctrs()
     ctr = unfinished[0]
-    unzip_container(ctr)
-
     srvc_files = {}
     srvc_globs = CONFIG["GLOBS"]
-    ctr_path = process_dir / ctr
+    ctr_path = get_raw_prefix(ctr)
     for srvc in srvc_globs:
+        if srvc == "SMTP":
+            continue
+        if srvc == "NGINX":
+            continue
         file_glob = ctr_path / srvc_globs[srvc]
         srvc_files[srvc] = glob.iglob(str(file_glob))
     return ctr, srvc_files
 
 
 def cleanup(ctr):
-    pdb.set_trace()
-    process_dir = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
-    ctr_path = process_dir / ctr
-    cmd = f"rm -rf {ctr_path}"
-    if "/mnt/nas/" in cmd:
-        LOGGER.fatal(f"trying to remove raw dir {cmd}")
-        return
-    utils.run_cmd(cmd, output=False, check=False)
-    LOGGER.debug(f"\t cleaned up {ctr_path}")
+    # pdb.set_trace()
+    # process_dir = get_home_prefix(CONFIG[PROCESS_DIR_KEY])
+    # ctr_path = process_dir / ctr
+    # cmd = f"rm -rf {ctr_path}"
+    # if "/mnt/nas/" in cmd:
+    #     LOGGER.fatal(f"trying to remove raw dir {cmd}")
+    #     return
+    # utils.run_cmd(cmd, output=False, check=False)
+    # LOGGER.debug(f"\t cleaned up {ctr_path}")
 
     finished_ctrs = get_ctrs_from_file(FINISHED_CTRS_KEY)
     finished_ctrs.append(ctr)

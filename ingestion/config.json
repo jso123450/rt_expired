@@ -1,8 +1,7 @@
 {
     "SCANNER": {
-        "SPACE_THRESHOLD": "20G",
         "HOME_DIR": "/mnt/nas_process/",
-        "LOG_PATH": "log.log",
+        "LOG_PATH": "scanner.log",
         "SORTED_CTRS_PATH": "sorted.txt",
         "PROCESSING_CTRS_PATH": "processing.txt",
         "FINISHED_CTRS_PATH": "finished.txt",
@@ -10,18 +9,23 @@
         "PROCESS_DIR": "process",
         "MALFORMATTED_DIR": "malformatted",
         "GLOBS": {
-            "NGINX": "var/log/nginx*",
-            "TELNET": "var/log/telnet*",
-            "FTP": "var/log/ftp*",
-            "SSH": "home/cowrie/cowrie/log/cowrie.json*",
-            "SMTP": "var/log/mail*"
+            "NGINX": "var/log/nginx/*.gz",
+            "TELNET": "var/log/telnet*.gz",
+            "FTP": "var/log/ftp*.gz",
+            "SSH": "home/cowrie/cowrie/log/cowrie.json*.gz",
+            "SMTP": "var/log/mail*.gz"
         }
     },
     "INDEXER": {
-        "LOG_PATH": "log.log",
+        "HOME_DIR": "/mnt/nas_process/",
+        "LOG_PATH": "indexer.log",
         "HOSTS": [
             "http://192.168.1.82:9200"
         ],
         "MAX_RETRIES": 5
+    },
+    "PARSER": {
+        "HOME_DIR": "/mnt/nas_process/",
+        "LOG_PATH": "parser.log"
     }
 }

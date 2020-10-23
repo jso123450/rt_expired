@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 
-BASE_DIR = Path("/home/jso/repos/rt_expired")
+BASE_DIR = Path("/home/ubuntu/rt_expired")
 CONFIG_FILE = BASE_DIR / "ingestion/config.json"
 CONTAINERS_FILE = BASE_DIR / "data/containers.txt"
 PLACEBOS_FILE = BASE_DIR / "data/placebos.txt"

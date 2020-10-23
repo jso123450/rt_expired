@@ -1,9 +1,12 @@
+# stdlib
+import pdb
+
 # 3p
 from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
 # proj
-import parser
+from log_parser import parser
 import utils
 
 
@@ -20,8 +23,12 @@ MAX_RETRIES = CONFIG["MAX_RETRIES"]
 
 def bulk_index(srvc_files):
     # handle errors... probably collect failed operations to retry later
-    success = True
+    successes = []
+    fails = []
     for srvc in srvc_files:
         for filename in srvc_files[srvc]:
-            bulk(CLIENT, parser.parse(filename), max_retries=MAX_RETRIES)
-    return success
+            LOGGER.info(f"{filename}")
+            tmp = bulk(CLIENT, parser.parse(filename), max_retries=MAX_RETRIES)
+            LOGGER.info(f"  {tmp}")
+            break
+    return successes, fails
