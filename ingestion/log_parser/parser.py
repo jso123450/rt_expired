@@ -117,7 +117,7 @@ def _create_nginx_access_entry(common, string):
     timestamp = utils.get_nginx_timestamp(grok["timestamp"]) 
 
     if "unknown_message_pattern" in grok or ("method" in grok and grok["method"] not in HTTP_METHODS):
-        entry["_index"] = "bad-nginx"
+        entry["_index"] = "bad-nginx-access"
         entry["_source"]["message"] = string.decode()
         entry["_source"]["@timestamp"] = timestamp
         return entry
@@ -131,28 +131,30 @@ def _create_nginx_access_entry(common, string):
         "response_code": grok["response_code"],
         "response_size": grok["bytes"],
         "referrer": grok["referrer"],
-        "user_agent": grok["agent"],
+        "user_agent": grok.get("agent", ""),
         "http_version": grok.get("http_version", ""),
-        "http_string": grok.get("http_string", "")
+        "http_string": grok.get("http_string", ""),
     }
     return entry
 
 def _create_nginx_error_entry(common, string):
-    LOGGER.info(f"nginx error")
     entry = common
     grok = None
     matchers = NGINX_ERROR_MATCHER
     for idx, matcher in enumerate(matchers):
-        grok = matcher.match(string.decode())
-        if grok is not None:
+        try:
+            grok = matcher.match(string.decode())
+        except UnicodeDecodeError:
             break
+        if grok is not None:
+                break
     
     if grok is None:
         entry["_index"] = "bad-nginx-error"
         entry["_source"]["message"] = string.decode()
         return entry
 
-    timestamp = datetime.strptime(grok['timestamp'], "%Y-%m-%d %H:%M:%S").isoformat() + "Z"
+    timestamp = datetime.strptime(grok['timestamp'], "%Y/%m/%d %H:%M:%S").isoformat() + "Z"
     
     entry["_source"]["@timestamp"] = timestamp
     entry["_index"] = f"nginx-error-{timestamp[0:4]}.{timestamp[5:7]}"
