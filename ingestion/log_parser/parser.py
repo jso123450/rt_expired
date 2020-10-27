@@ -11,7 +11,8 @@ from log_parser.grokpatterns import TELNET_MATCHER, \
                                 NGINX_ACCESS_MATCHER, \
                                 NGINX_ERROR_MATCHER, \
                                 FTP_MATCHER, \
-                                POSTFIX_MATCHER
+                                POSTFIX_PREFIX_MATCHER, \
+                                POSTFIX_MESSAGE_MATCHER
 import utils
 
 # constants
@@ -80,14 +81,6 @@ def _parse_ssh(common, string):
     entry["_index"] = "ssh-{}".format(timestamp[:7].replace("-", "."))
     entry["_source"].update({"ssh": ssh, "@timestamp": timestamp})
     return entry
-
-
-# def _parsepostfix(string):
-#     for matcher in POSTFIX_MATCHER:
-#         match = matcher.match(string.decode())
-#         print(match)
-#         if match != None:
-#             print(match)
 
 def _parse_telnet(common, string):
     entry = common
@@ -188,6 +181,33 @@ def _parse_nginx(common, filename, string):
         return _parse_nginx_access(common, string)
     else:
         return _parse_nginx_error(common, string)
+
+def _parse_smtp(common, string):
+    entry = common
+    match = prefix_matcher.match(string)
+    if match != None and match['program'] in message_matcher:
+        for matcher in message_matcher[match['program']]:
+            parsed_msg = matcher.grok(match['message'])
+            if parsed_msg:
+                for key in parsed_msg:
+                    if parsed_msg[key] == None:
+                        break
+                else:
+                    timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
+                    if timestamp.month <= 7:
+                        timestamp.replace(year=2020)
+                    else:
+                        timestamp.replace(year=2019)
+                    entry["_index"] = "{}-{}.{}".format(match['program'].replace('/', '-'), 
+                        timestamp.year, timestamp.month)
+                    entry["_source"]["message"] = match['message']
+                    entry["_source"]["program"] = match['program']
+                    entry["_source"]["_type"] = match['program'].replace('/', '_')
+                    entry["_source"]["@timestamp"] = match['timestamp']
+                    for key in parsed_msg:
+                        entry["_source"][key] = parsed_msg[key]
+                    return entry
+    return None
 
 ########################################################
 
