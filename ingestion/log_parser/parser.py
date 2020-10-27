@@ -192,7 +192,10 @@ def _parse_smtp(common, string):
                         break
                 else:
                     timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
-                    timestamp.year = 2019
+                    if timestamp.month <= 7:
+                        timestamp.replace(year=2020)
+                    else:
+                        timestamp.replace(year=2019)
                     entry["_index"] = "{}-{}.{}".format(match['program'].replace('/', '-'), 
                         timestamp.year, timestamp.month)
                     entry["_source"]["message"] = match['message']
