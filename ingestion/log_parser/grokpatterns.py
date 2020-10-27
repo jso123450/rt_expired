@@ -10,12 +10,13 @@ NGINX_ACCESS_PATTERNS = [
 	"%{IPORHOST:remote_ip} - %{DATA:user_name} \[%{HTTPDATE:timestamp}\] \"%{IPORHOST:name} \"%{NUMBER:response_code} %{NUMBER:bytes} \"%{DATA:referrer}\" \"%{DATA:agent}\"",  # weird normal + name(ip/host)
 	"%{IPORHOST:remote_ip} - %{DATA:user_name} \[%{HTTPDATE:timestamp}\] \"%{WORD:name} \"%{NUMBER:response_code} %{NUMBER:bytes} \"%{DATA:referrer}\" \"%{DATA:agent}\"",  # weird normal + name(ip/host)
 	"%{IPORHOST:remote_ip} - %{DATA:user_name} \[%{HTTPDATE:timestamp}\] \"%{GREEDYDATA:http_string}\" %{NUMBER:response_code} %{NUMBER:bytes} \"%{DATA:referrer}\" \"%{DATA:agent}\"",  # no method no name
+	"%{IPORHOST:remote_ip} - %{DATA:user_name} \[%{HTTPDATE:timestamp}\] \"%{GREEDYDATA:other} %{WORD:method} %{DATA:url} HTTP/%{NUMBER:http_version}\" |||| %{NUMBER:response_code} |||| %{NUMBER:bytes} %{GREEDYDATA:other_2} \"%{DATA:referrer}\" |||| \"%{DATA:random_number}\"", # pipe pattern
+	"%{IPORHOST:remote_ip} - %{DATA:user_name} \[%{HTTPDATE:timestamp}\] \"%{GREEDYDATA:other} %{WORD:method} %{DATA:url} HTTP\" |||| %{NUMBER:response_code} |||| %{NUMBER:bytes} %{GREEDYDATA:other_2} \"%{DATA:referrer}\" |||| \"%{DATA:random_number}\"", # pipe pattern w/o http version
 	"%{IPORHOST:remote_ip} - %{DATA:user_name} \[%{HTTPDATE:timestamp}\] %{GREEDYDATA:unknown_message_pattern}",  # unknown nginx message pattern
-	#%{IPORHOST:remote_ip} - %{DATA:user_name} \[%{HTTPDATE:timestamp}\] \"%{GREEDYDATA:other} %{WORD:method} %{DATA:url} HTTP/%{NUMBER:http_version}\" \|\|\|\| %{NUMBER:response_code} \|\|\|\| %{NUMBER:bytes} %{GREEDYDATA:other_2} \"%{DATA:referrer}\" \|\|\|\| \"%{DATA:agent}\" # pipe pattern
 ]
 
 NGINX_ERROR_PATTERNS = [
-	"%{DATA:[nginx][error][time]} \[%{DATA:[nginx][error][level]}\] %{NUMBER:[nginx][error][pid]}#%{NUMBER:[nginx][error][tid]}: (\*%{NUMBER:[nginx][error][connection_id]} )?%{GREEDYDATA:[nginx][error][message]}"
+	"%{DATA:timestamp} \[%{DATA:level}\] %{NUMBER:pid}#%{NUMBER:tid}: (\*%{NUMBER:connection_id} )?%{GREEDYDATA:message}"
 ]
 
 TELNET_PATTERNS = [
