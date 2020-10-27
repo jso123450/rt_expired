@@ -141,6 +141,8 @@ def _create_nginx_access_entry(common, string):
         "user_agent": grok.get("agent", ""),
         "http_version": grok.get("http_version", ""),
         "http_string": grok.get("http_string", ""),
+        "pipe_headers": utils.get_pipe_headers(grok),
+        "pipe_number": grok.get("pipe_number", ""),
     }
     return entry
 

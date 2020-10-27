@@ -69,3 +69,11 @@ def get_nginx_timestamp(timestamp):
         return datetime.strptime(timestamp, "%d/%b/%Y:%H:%M:%S %z").isoformat() # has timezone
     except ValueError:
         return datetime.strptime(timestamp, "%d/%b/%Y:%H:%M:%S").isoformat() + "Z" # no timezone (assume UTC)
+
+def get_pipe_headers(grok):
+    pipe_header = ""
+    if "pipe_header" in grok and grok["pipe_header"] is not None:
+        pipe_header += grok["pipe_header"]
+    if "pipe_header_2" in grok and grok["pipe_header_2"] is not None:
+        pipe_header += grok["pipe_header"]
+    return pipe_header
