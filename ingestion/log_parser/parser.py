@@ -21,7 +21,14 @@ LOGGER = utils.get_logger("parser", f"{CONFIG['PARSER']['HOME_DIR']}/{CONFIG['PA
 
 HTTP_METHODS = {
     "GET", 
+    "HEAD",
     "POST",
+    "PUT",
+    "DELETE",
+    "CONNECT",
+    "OPTIONS",
+    "TRACE",
+    "PATCH",
     "PROPFIND",
 }
 
@@ -45,42 +52,34 @@ def _parse_common(fname, line):
     }
     return common
 
-
 def _parse_ftp(common, string):
+    entry = common
     for matcher in FTP_MATCHER:
         match = matcher.match(string.decode())
         if match != None:
             ftp = match
-            timestamp = ftp['timestamp']
+            timestamp = datetime.strptime(ftp['timestamp'], "%Y-%m-%d %H:%M:%S").isoformat() + "Z"
             ip = ftp['ip']
             del(ftp['timestamp'])
             del(ftp['ip'])
-            doc = {
-                "_index": "ftp-{}".format(timestamp[:7].replace("-", ".")),
-                "_type": "ftp",
-                "_source": {
-                    "ftp": ftp,
-                    "ip": ip,
-                    "@timestamp": timestamp
-                },
-            }
-            doc.update(common)
-            return doc
-    return None
+            entry["_index"] = "ftp-{}".format(timestamp[:7].replace("-", "."))
+            entry["_source"].update({"ftp": ftp, "ip": ip, "@timestamp": timestamp})
+            return entry
+    
+    entry["_index"] = "bad-ftp"
+    entry["_source"]["message"] = string.decode()
+    return entry
 
 def _parse_ssh(common, string):
+    entry = common
     ssh = json.loads(string)
+    timestamp = ssh["timestamp"]
     ssh["ip"] = ssh["src_ip"]
-    ssh["@timestamp"] = ssh["timestamp"]
     del(ssh["src_ip"])
     del(ssh["timestamp"])
-    doc = {
-        "_index": "ssh-{}".format(ssh['@timestamp'][:7].replace("-", ".")),
-        "_type": "ssh",
-        "_source": ssh
-    }
-    doc.update(common)
-    return doc
+    entry["_index"] = "ssh-{}".format(timestamp[:7].replace("-", "."))
+    entry["_source"].update({"ssh": ssh, "@timestamp": timestamp})
+    return entry
 
 
 # def _parsepostfix(string):
@@ -98,61 +97,87 @@ def _parse_telnet(common, string):
         if grok is not None:
             break
     if grok is None:
-        return None
+        entry["_index"] = "bad-telnet"
+        entry["_source"]["message"] = string.decode()
+        return entry
     # pdb.set_trace()
+    entry["_index"] = "telnet-" + grok['timestamp'][0:4] + "." + grok['timestamp'][5:7]
     entry["_source"]["@timestamp"] = datetime.strptime(grok['timestamp'], "%Y-%m-%d %H:%M:%S").isoformat() + "Z"
-    entry["_source"]["_index"] = "telnet-" + grok['timestamp'][0:4] + "." + grok['timestamp'][5:7]
-    entry["_source"]["_type"] = "ftp"
-    entry["_source"]["ftp"] = { "user": grok['user'], "password": grok['password'] }
+    entry["_source"]["telnet"] = { "user": grok['user'], "password": grok['password'] }
     return entry
 
 
-def _create_nginx_entry(common, string, type):
+def _create_nginx_access_entry(common, string):
     entry = common
     grok = None
     matchers = NGINX_ACCESS_MATCHER
-    if type == "error":
-        matchers = NGINX_ERROR_MATCHER
     for idx, matcher in enumerate(matchers):
         grok = matcher.match(string.decode())
         if grok is not None and ("method" in grok and grok["method"] in HTTP_METHODS):
             break
-    if grok is None:
-        return None
-    timestamp = datetime.strptime(grok['timestamp'], "%d/%b/%Y:%H:%M:%S %z").isoformat() + "Z"
-    entry["_source"]["@timestamp"] = timestamp
-    entry["_index"] = f"nginx-{type}-{timestamp[0:4]}.{timestamp[5:7]}"
-    entry["_type"] = f"nginx-{type}"
 
-    if type == "access":
-        entry["_source"]["nginx"] = {
-            "method": grok.get("method", ""),
-            "user_name": grok["user_name"],
-            "path": grok.get("url", ""),
-            "response_code": grok["response_code"],
-            "response_size": grok["bytes"],
-            "referrer": grok["referrer"],
-            "user_agent": grok["agent"],
-            "http_string": grok.get("http_string", "")
-        }
-    else: 
-        entry["_source"]["error"] = {
-            "level": grok["level"],
-            "pid": grok["pid"],
-            "tid": grok["tid"],
-            "connection_id": grok["connection_id"],
-            "message": grok["message"],
-        }
+    if grok is None:
+        entry["_index"] = "bad-nginx-access"
+        entry["_source"]["message"] = string.decode()
+        return entry
+    
+    timestamp = utils.get_nginx_timestamp(grok["timestamp"]) 
+
+    if "unknown_message_pattern" in grok or ("method" in grok and grok["method"] not in HTTP_METHODS):
+        entry["_index"] = "bad-nginx"
+        entry["_source"]["message"] = string.decode()
+        entry["_source"]["@timestamp"] = timestamp
+        return entry
+    
+    entry["_source"]["@timestamp"] = timestamp
+    entry["_index"] = f"nginx-access-{timestamp[0:4]}.{timestamp[5:7]}"
+    entry["_source"]["nginx"] = {
+        "method": grok.get("method", ""),
+        "user_name": grok["user_name"],
+        "path": grok.get("url", ""),
+        "response_code": grok["response_code"],
+        "response_size": grok["bytes"],
+        "referrer": grok["referrer"],
+        "user_agent": grok["agent"],
+        "http_version": grok.get("http_version", ""),
+        "http_string": grok.get("http_string", "")
+    }
     return entry
 
+def _create_nginx_error_entry(common, string):
+    LOGGER.info(f"nginx error")
+    entry = common
+    grok = None
+    matchers = NGINX_ERROR_MATCHER
+    for idx, matcher in enumerate(matchers):
+        grok = matcher.match(string.decode())
+        if grok is not None:
+            break
+    
+    if grok is None:
+        entry["_index"] = "bad-nginx-error"
+        entry["_source"]["message"] = string.decode()
+        return entry
 
+    timestamp = datetime.strptime(grok['timestamp'], "%Y-%m-%d %H:%M:%S").isoformat() + "Z"
+    
+    entry["_source"]["@timestamp"] = timestamp
+    entry["_index"] = f"nginx-error-{timestamp[0:4]}.{timestamp[5:7]}"
+    entry["_source"]["error"] = {
+        "level": grok["level"],
+        "pid": grok["pid"],
+        "tid": grok["tid"],
+        "connection_id": grok["connection_id"],
+        "message": grok["message"],
+    }
+    return entry
 
 def _parse_nginx_access(common, string):
-    return _create_nginx_entry(common, string, "access")
+    return _create_nginx_access_entry(common, string)
 
 
 def _parse_nginx_error(common, string):
-    return _create_nginx_entry(common, string, "error")
+    return _create_nginx_error_entry(common, string)
 
 def _parse_nginx(common, filename, string):
     if "access" in filename:

@@ -1,4 +1,5 @@
 import csv
+from datetime import datetime
 import json
 import logging
 from pathlib import Path
@@ -62,3 +63,9 @@ def run_cmd(cmd, output=False, check=False):
     else:
         proc = subprocess.run(cmd, shell=True, check=check)
         return None
+
+def get_nginx_timestamp(timestamp):
+    try:
+        return datetime.strptime(timestamp, "%d/%b/%Y:%H:%M:%S %z").isoformat() # has timezone
+    except ValueError:
+        return datetime.strptime(timestamp, "%d/%b/%Y:%H:%M:%S").isoformat() + "Z" # no timezone (assume UTC)

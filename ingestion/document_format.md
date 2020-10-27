@@ -34,7 +34,9 @@
                 "referrer" : "...",
                 "user_agent" : {
                     "parsed user agent using uap-python"
-                }
+                },
+                "http_version" : "...",
+                "http_string" : "..."
             },
             "error" : {
                 "level": "...",
@@ -53,9 +55,9 @@
 ```json
 {
     "_index" : "telnet-YYYY.MM",
-    "_type" : "ftp",
+    "_type" : "telnet",
     "_source" : {
-        "ftp": {
+        "telnet": {
             "user": "...",
             "password": "..."
         }

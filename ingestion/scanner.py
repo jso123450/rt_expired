@@ -172,8 +172,12 @@ def scan():
     for srvc in srvc_globs:
         if srvc == "SMTP":
             continue
-        if srvc == "NGINX":
-            continue
+        # if srvc == "NGINX":
+        #     continue
+        # if srvc == "TELNET":
+        #     continue
+        # if srvc == "FTP":
+        #     continue
         file_glob = ctr_path / srvc_globs[srvc]
         srvc_files[srvc] = glob.iglob(str(file_glob))
     return ctr, srvc_files

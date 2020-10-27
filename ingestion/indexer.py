@@ -30,5 +30,5 @@ def bulk_index(srvc_files):
             LOGGER.info(f"{filename}")
             tmp = bulk(CLIENT, parser.parse(filename), max_retries=MAX_RETRIES)
             LOGGER.info(f"  {tmp}")
-            break
+            # break
     return successes, fails

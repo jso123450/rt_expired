@@ -15,6 +15,8 @@ class LogType(Enum):
             return LogType.NGINX
         elif "telnet" in filename:
             return LogType.TELNET
+        elif "ftp" in filename:
+            return LogType.FTP
         elif "cowrie" in filename:
             return LogType.SSH
         elif "mail" in filename:
