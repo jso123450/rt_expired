@@ -73,13 +73,18 @@ def _parse_ftp(common, string):
 
 def _parse_ssh(common, string):
     entry = common
-    ssh = json.loads(string)
-    timestamp = ssh["timestamp"]
-    ssh["ip"] = ssh["src_ip"]
-    del(ssh["src_ip"])
-    del(ssh["timestamp"])
-    entry["_index"] = "ssh-{}".format(timestamp[:7].replace("-", "."))
-    entry["_source"].update({"ssh": ssh, "@timestamp": timestamp})
+    try:
+        ssh = json.loads(string)
+        timestamp = ssh["timestamp"]
+        ssh["ip"] = ssh["src_ip"]
+        del(ssh["src_ip"])
+        del(ssh["timestamp"])
+        entry["_index"] = "ssh-{}".format(timestamp[:7].replace("-", "."))
+        entry["_source"].update({"ssh": ssh, "@timestamp": timestamp})
+    except:
+        entry["_index"] = "bad-ssh"
+        entry["_source"]["message"] = str(string)
+    
     return entry
 
 def _parse_telnet(common, string):
@@ -149,11 +154,14 @@ def _create_nginx_error_entry(common, string):
         except UnicodeDecodeError:
             break
         if grok is not None:
-                break
+            break
     
     if grok is None:
         entry["_index"] = "bad-nginx-error"
-        entry["_source"]["message"] = string.decode()
+        try:
+            entry["_source"]["message"] = string.decode()
+        except UnicodeDecodeError:
+            entry["_source"]["message"] = str(string)
         return entry
 
     timestamp = datetime.strptime(grok['timestamp'], "%Y/%m/%d %H:%M:%S").isoformat() + "Z"
@@ -184,9 +192,9 @@ def _parse_nginx(common, filename, string):
 
 def _parse_smtp(common, string):
     entry = common
-    match = prefix_matcher.match(string)
-    if match != None and match['program'] in message_matcher:
-        for matcher in message_matcher[match['program']]:
+    match = POSTFIX_PREFIX_MATCHER.match(string.decode())
+    if match != None and match['program'] in POSTFIX_MESSAGE_MATCHER:
+        for matcher in POSTFIX_MESSAGE_MATCHER[match['program']]:
             parsed_msg = matcher.grok(match['message'])
             if parsed_msg:
                 for key in parsed_msg:
@@ -195,19 +203,28 @@ def _parse_smtp(common, string):
                 else:
                     timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
                     if timestamp.month <= 7:
-                        timestamp.replace(year=2020)
+                        timestamp = timestamp.replace(year=2020)
                     else:
-                        timestamp.replace(year=2019)
+                        timestamp = timestamp.replace(year=2019)
                     entry["_index"] = "{}-{}.{}".format(match['program'].replace('/', '-'), 
                         timestamp.year, timestamp.month)
+                    entry["_source"]["@timestamp"] = timestamp.isoformat() + "Z"
                     entry["_source"]["message"] = match['message']
                     entry["_source"]["program"] = match['program']
-                    entry["_source"]["_type"] = match['program'].replace('/', '_')
-                    entry["_source"]["@timestamp"] = match['timestamp']
                     for key in parsed_msg:
                         entry["_source"][key] = parsed_msg[key]
                     return entry
-    return None
+        entry["_index"] = "bad-{}".format(match["program"].replace("/", "-"))
+    else:
+        entry["_index"] = "bad-postfix"
+    timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
+    if timestamp.month <= 7:
+        timestamp = timestamp.replace(year=2020)
+    else:
+        timestamp = timestamp.replace(year=2019)
+    entry["_source"]["@timestamp"] = timestamp.isoformat() + "Z"
+    entry["_source"]["message"] = string.decode()
+    return entry
 
 ########################################################
 
@@ -216,7 +233,7 @@ LOG_TYPE_PARSER = {
     LogType.TELNET: _parse_telnet,
     LogType.FTP: _parse_ftp,
     LogType.SSH: _parse_ssh,
-    # LogType.SMTP: _parse_smtp,
+    LogType.SMTP: _parse_smtp,
 }
 
 
@@ -244,15 +261,18 @@ def parse(filename):
     with gzip.open(filename, "rb") as f:
         try:
             for idx, line in enumerate(f):
-                without_newline = line[:-1]
-                common = _parse_common(filename, idx)
-                doc = None
-                if log_type == LogType.NGINX:
-                    doc = LOG_TYPE_PARSER[log_type](common, filename, without_newline)
-                else:
-                    doc = LOG_TYPE_PARSER[log_type](common, without_newline)
-                if doc is not None:
-                    # pdb.set_trace()
-                    yield doc
+                try:
+                    without_newline = line[:-1]
+                    common = _parse_common(filename, idx)
+                    doc = None
+                    if log_type == LogType.NGINX:
+                        doc = LOG_TYPE_PARSER[log_type](common, filename, without_newline)
+                    else:
+                        doc = LOG_TYPE_PARSER[log_type](common, without_newline)
+                    if doc is not None:
+                        # pdb.set_trace()
+                        yield doc
+                except Exception as e:
+                    LOGGER.warning(f"{e}: {line}")
         except OSError as e:
             LOGGER.warning(f"  {e}: {filename}")
