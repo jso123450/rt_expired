@@ -1,10 +1,10 @@
 # To add a new cell, type '# %%'
 # To add a new markdown cell, type '# %% [markdown]'
 # %%
-# from IPython import get_ipython
+from IPython import get_ipython
 
 # %%
-# get_ipython().run_line_magic("load_ext", "autotime")
+get_ipython().run_line_magic("load_ext", "autotime")
 
 # %%
 from collections import defaultdict
@@ -13,6 +13,7 @@ import json
 import logging
 from pathlib import Path
 import pdb
+import re
 
 from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, A, Q
@@ -23,6 +24,7 @@ import numpy as np
 
 import utils
 import es_utils
+import plot_utils
 
 
 # from utils
@@ -34,18 +36,22 @@ NONPLACEBOS = utils.get_nonplacebos()
 # constants
 INDICES = ["ftp-*", "telnet-*"]
 SEP = CONFIG["IO"]["CSV_SEP"]
+MOST_COMMON_ROCKYOU = 20
 
 # artifacts
 BASE_DIR = Path(CONFIG["ARTIFACT_DIR"]) / "ftp-telnet"
 DATA_DIR = BASE_DIR / "es"
 PLOTS_DIR = BASE_DIR / "plots"
+FTP_BOT_IPS = DATA_DIR / "ftp_bot_ips.txt"
+TELNET_BOT_IPS = DATA_DIR / "telnet_bot_ips.txt"
+
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 PLOTS_DIR.mkdir(parents=True, exist_ok=True)
 
 FTP_DF = DATA_DIR / "ftp.csv"
 TELNET_DF = DATA_DIR / "telnet.csv"
 
-ROCKYOU_FILE = DATA_DIR / "rockyou.txt.gz"
+ROCKYOU_FILE = BASE_DIR / "rockyou.txt.gz"
 
 
 # globals
@@ -86,60 +92,129 @@ def get_ftp_telnet_reqs(idx_ptrn, csv):
     })
     return df
 
-ftp_df = get_ftp_telnet_reqs("ftp-*", FTP_DF)
-telnet_df = get_ftp_telnet_reqs("telnet-*", TELNET_DF)
-
-# %%
-all_srvc_unique_ips = es_utils.get_srvc_unique_ips(
-    es_utils.ALL_SRVC_UNIQUE_IPS_DF, filter_time=False
-)
-filtered_srvc_unique_ips = es_utils.get_srvc_unique_ips(
-    es_utils.FILTERED_SRVC_UNIQUE_IPS_DF, filter_time=True
-)
-LOGGER.info(
-    f"all shape {all_srvc_unique_ips.shape}, filtered shape {filtered_srvc_unique_ips.shape}"
-)
-
-placebos, _, _, _ = es_utils.filter_placebo_ips(
-    all_srvc_unique_ips
-)  # get placebo ips from entire range
-_, nonplacebos, _, _ = es_utils.filter_placebo_ips(
-    filtered_srvc_unique_ips
-)  # get nonplacebos from window
-
-# %%
-def get_filtered_placebos(df):
-    filtered_df = df[~df["client_ip"].isin(placebos["client_ip"])]
-    placebo_df = df[df["client_ip"].isin(placebos["client_ip"])]
-    return filtered_df, placebo_df
-
-ftp_filtered_1_df, ftp_placebo_df = get_filtered_placebos(ftp_df)
-telnet_filtered_1_df, telnet_placebo_df = get_filtered_placebos(telnet_df)
 
 # %%
 def get_rockyou_passwords():
     with gzip.open(ROCKYOU_FILE, "r") as f:
-        return pd.Series(f.readlines())
+        lines = []
+        for line in f:
+            if len(lines) >= MOST_COMMON_ROCKYOU:
+                break
+            try:
+                lines.append(line.rstrip().decode())
+            except UnicodeDecodeError as e:
+                # print(f"{idx} {line} {e}")
+                pass
+        # lines = [line.rstrip() for line in f.readlines()]
+        LOGGER.info(f"Loaded the top {MOST_COMMON_ROCKYOU} ROCKYOU passwords.")
+        return pd.Series(lines, dtype="string")
+
 
 def filter_same_creds(filtered, placebo):
-    common = filtered.merge(placebo, how="inner", on=["user", "password"])
-    nonplacebo_creds = filtered[
-        (~filtered.user.isin(common.user)) | (~filtered.password.isin(common.password))
-    ]
+    filter_up = filtered.groupby(["user", "password"]).sum().reset_index()[["user", "password"]]
+    placebo_up = placebo.groupby(["user", "password"]).sum().reset_index()[["user", "password"]]
+    common = filter_up.merge(placebo_up, on=["user", "password"], how="inner")
     placebo_creds = filtered[
         (filtered.user.isin(common.user)) & (filtered.password.isin(common.password))
     ]
+    nonplacebo_creds = filtered[
+        (~filtered.user.isin(common.user)) | (~filtered.password.isin(common.password))
+    ]
+    nonplacebo_creds = nonplacebo_creds[~nonplacebo_creds["client_ip"].isin(placebo_creds["client_ip"])]
     return nonplacebo_creds, placebo_creds
+
 
 def filter_rockyou_passwords(df, rockyou):
     non_rockyou_rows = df[~df["password"].isin(rockyou)]
     rockyou_rows = df[df["password"].isin(rockyou)]
+    non_rockyou_rows = non_rockyou_rows[~non_rockyou_rows["client_ip"].isin(rockyou_rows["client_ip"])]
     return non_rockyou_rows, rockyou_rows
 
-rockyou_passwords = get_rockyou_passwords()
-ftp_filtered_2_df, ftp_filtered_2_placebo_df = filter_same_creds(ftp_filtered_1_df, ftp_placebo_df)
-ftp_filtered_3_df, ftp_filtered_3_rockyou_df = filter_rockyou_passwords(ftp_filtered_2_df, rockyou_passwords)
 
-telnet_filtered_2_df, telnet_filtered_2_placebo_df = filter_same_creds(telnet_filtered_1_df, telnet_placebo_df)
-telnet_filtered_3_df, telnet_filtered_3_rockyou_df = filter_rockyou_passwords(telnet_filtered_2_df, rockyou_passwords)
+def filter_domain_pw(df):
+    def _check_domain_pw(row):
+        # return row.domain in row.password
+        domain_parts = row.domain.split("-")[:-1]   # don't want TLD
+        domain_pw = [row.password.find(part) for part in domain_parts]
+        domain_pw = [0 if val == -1 else 1 for val in domain_pw]
+        return sum(domain_pw)
+    df["domain_pw"] = df.apply(_check_domain_pw, axis=1)
+    # nondomain_pw_rows = df[df["domain_pw"] == False]
+    # domain_pw_rows = df[df["domain_pw"] == True]
+    nondomain_pw_rows = df[df["domain_pw"] == 0]
+    domain_pw_rows = df[df["domain_pw"] > 0]
+    nondomain_pw_rows = nondomain_pw_rows[~nondomain_pw_rows["client_ip"].isin(domain_pw_rows["client_ip"])]
+    return nondomain_pw_rows, domain_pw_rows
 
+
+def filter_df(df, rockyou, placebos, other_bot_ips):
+    placebo_df, nonplacebo_df, _, _ = es_utils.filter_placebo_ips(df)
+    nonplacebo_ips = nonplacebo_df[~nonplacebo_df["client_ip"].isin(placebos)]
+    nonplacebo_bot_ips = nonplacebo_df[nonplacebo_df["client_ip"].isin(placebos)]
+
+    filtered_2 = nonplacebo_ips
+
+    filtered_3, placebo_creds = filter_same_creds(filtered_2, placebo_df)
+    filtered_4, rockyou_rows = filter_rockyou_passwords(filtered_3, rockyou)
+    filtered_5, domain_pw_rows = filter_domain_pw(filtered_4)
+    filtered_6 = filtered_5[~filtered_5["client_ip"].isin(other_bot_ips)]
+    other_bot_ip_rows = filtered_5[filtered_5["client_ip"].isin(other_bot_ips)]
+
+    filter_lvl_dfs = [filtered_6, other_bot_ip_rows, domain_pw_rows, rockyou_rows, placebo_creds, nonplacebo_bot_ips, placebo_df]
+    labels = [
+        "Unique Client IPs", "Filtered by other services' bot IPs", 
+        "Filtered by exact domain in passwords", f"Filtered by top {MOST_COMMON_ROCKYOU} rockyou passwords", 
+        "Filtered by exact placebo credentials", "Filtered by placebo IPs", "Filtered by placebo domains"
+    ]
+
+    return filter_lvl_dfs, labels
+
+# %%
+
+def run_pipeline(idx_ptrn):
+    # get source DF
+    source_path = FTP_DF if idx_ptrn == "ftp-*" else TELNET_DF    
+    usecols = ["id", "client_ip", "user", "password"]
+    dtype = {"id": "uint16", "client_ip": "string", "user": "string", "password": "string"}
+    df = es_utils.load_source_df(idx_ptrn, source_path, usecols, dtype, get_ftp_telnet_reqs)
+
+    # get placebo IPs
+    all_srvc_unique_ips = es_utils.get_srvc_unique_ips(es_utils.ALL_SRVC_UNIQUE_IPS_DF, filter_time=False)
+    placebos, _, _, _ = es_utils.filter_placebo_ips(all_srvc_unique_ips)
+    placebos = placebos.client_ip.unique()
+    del all_srvc_unique_ips
+    LOGGER.info(f"Loaded placebos {len(placebos)}")
+
+    # get other bot IPs
+    other_bot_ips = es_utils.get_other_bot_ips(idx_ptrn)
+
+    # run pipeline
+    rockyou = get_rockyou_passwords()
+    filter_lvl_dfs, labels = filter_df(df, rockyou, placebos, other_bot_ips)
+    LOGGER.info(f"Filtered df.")
+
+    bot_ips_file = FTP_BOT_IPS
+    if idx_ptrn == "telnet-*":
+        bot_ips_file = TELNET_BOT_IPS
+    es_utils.save_bot_ips(filter_lvl_dfs[2:], bot_ips_file)
+
+    srvc = idx_ptrn[:idx_ptrn.index("-*")]
+    tmp = plot_utils.plot_ip_counts(filter_lvl_dfs, legend=labels, _file=PLOTS_DIR / f"{srvc}-filter-bars.png")
+
+    plot_utils.plot_sankey_filters(tmp, labels, 
+        node_labels=["F0", "Placebo Servers", "F1", "Placebo IPs", 
+        "F2", "Exact Placebo Credentials", "F3", 
+        f"Top {MOST_COMMON_ROCKYOU} ROCKYOU Passwords", "F4", "Exact Domain in Password", "F5", "Other Services' Bot IPs", "F6"],
+        _file=PLOTS_DIR / f"{srvc}-sankey.html")
+    return tmp
+
+
+# %%
+idx_ptrn = "ftp-*"
+ftp_tmp = run_pipeline(idx_ptrn)
+
+# %%
+idx_ptrn = "telnet-*"
+telnet_tmp = run_pipeline(idx_ptrn)
+
+# %%

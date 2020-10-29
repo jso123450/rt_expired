@@ -4,6 +4,8 @@ from pathlib import Path
 import sys
 
 # import pdb
+import pandas as pd
+import numpy as np
 
 from elasticsearch_dsl.connections import connections
 
@@ -64,12 +66,3 @@ def get_placebos():
 def save_as_json(obj, path):
     with open(path, "w+") as f:
         json.dump(obj, f)
-
-
-def get_time_windows(idx_ptrn):
-    cfg = get_config()
-    windows = cfg["TIME"]["WINDOWS"]
-    idx_windows = windows.get(idx_ptrn, windows["DEFAULT"])
-    start_window = idx_windows["START"]
-    end_window = idx_windows["END"]
-    return start_window, end_window
