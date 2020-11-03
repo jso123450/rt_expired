@@ -20,7 +20,19 @@
         "HOME_DIR": "/mnt/nas_process/",
         "LOG_PATH": "indexer.log",
         "HOSTS": [
-            "http://192.168.1.82:9200"
+            "http://192.168.1.82:9200",
+            "http://192.168.1.84:9200",
+            "http://192.168.1.85:9200"
+        ],
+        "MAX_RETRIES": 5
+    },
+    "REINDEXER": {
+        "HOME_DIR": "/mnt/nas_process/",
+        "LOG_PATH": "reindexer.log",
+        "HOSTS": [
+            "http://192.168.1.82:9200",
+            "http://192.168.1.84:9200",
+            "http://192.168.1.85:9200"
         ],
         "MAX_RETRIES": 5
     },

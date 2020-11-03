@@ -13,6 +13,7 @@ import pdb
 
 # proj
 import indexer
+import reindexer
 import scanner
 import utils
 
@@ -22,25 +23,28 @@ SLEEP_DUR = 10
 
 def parse_args():
     parser = argparse.ArgumentParser()
+    parser.add_argument("task", type=str, help="'index' or 'reindex'")
     return parser.parse_args()
 
 
-def main():
-    # args = parse_args()
-    # pdb.set_trace()
+def main(task):
+    if task == "index":
+        # scan and unzip
+        ctr, srvc_files = scanner.scan()
 
-    # scan and unzip
-    ctr, srvc_files = scanner.scan()
+        # bulk index
+        indexer.bulk_index(ctr, srvc_files)
 
-    # bulk index
-    indexer.bulk_index(srvc_files)
-
-    # cleanup
-    scanner.cleanup(ctr)
+        # cleanup
+        scanner.cleanup(ctr)
+    elif task == "reindex":
+        reindexer.reindex()
 
 
 if __name__ == "__main__":
-    # while True:
-    #     main()
-    #     time.sleep(SLEEP_DUR)
-    main()
+    args = parse_args()
+    while True:
+        main(args.task)
+        if args.task == "reindex":
+            break
+        time.sleep(SLEEP_DUR)

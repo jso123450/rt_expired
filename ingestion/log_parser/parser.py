@@ -53,6 +53,7 @@ def _parse_common(fname, line):
     }
     return common
 
+
 def _parse_ftp(common, string):
     entry = common
     for matcher in FTP_MATCHER:
@@ -71,6 +72,7 @@ def _parse_ftp(common, string):
     entry["_source"]["message"] = string.decode()
     return entry
 
+
 def _parse_ssh(common, string):
     entry = common
     try:
@@ -87,6 +89,7 @@ def _parse_ssh(common, string):
     
     return entry
 
+
 def _parse_telnet(common, string):
     entry = common
     grok = None
@@ -101,6 +104,7 @@ def _parse_telnet(common, string):
     # pdb.set_trace()
     entry["_index"] = "telnet-" + grok['timestamp'][0:4] + "." + grok['timestamp'][5:7]
     entry["_source"]["@timestamp"] = datetime.strptime(grok['timestamp'], "%Y-%m-%d %H:%M:%S").isoformat() + "Z"
+    entry["_source"]["ip"] = grok["ip"]  # should always be here
     entry["_source"]["telnet"] = { "user": grok['user'], "password": grok['password'] }
     return entry
 
@@ -129,6 +133,7 @@ def _create_nginx_access_entry(common, string):
     
     entry["_source"]["@timestamp"] = timestamp
     entry["_index"] = f"nginx-access-{timestamp[0:4]}.{timestamp[5:7]}"
+    entry["_source"]["ip"] = grok["remote_ip"]  # should always be here
     entry["_source"]["nginx"] = {
         "method": grok.get("method", ""),
         "user_name": grok["user_name"],
@@ -143,6 +148,7 @@ def _create_nginx_access_entry(common, string):
         "pipe_number": grok.get("pipe_number", ""),
     }
     return entry
+
 
 def _create_nginx_error_entry(common, string):
     entry = common
@@ -184,11 +190,13 @@ def _parse_nginx_access(common, string):
 def _parse_nginx_error(common, string):
     return _create_nginx_error_entry(common, string)
 
+
 def _parse_nginx(common, filename, string):
     if "access" in filename:
         return _parse_nginx_access(common, string)
     else:
         return _parse_nginx_error(common, string)
+
 
 def _parse_smtp(common, string):
     entry = common
@@ -235,6 +243,25 @@ LOG_TYPE_PARSER = {
     LogType.SSH: _parse_ssh,
     LogType.SMTP: _parse_smtp,
 }
+
+
+def parse_line(filename, line_num):
+    """Parses a specific line number in the filename. The line number is 0-indexed."""
+    # don't use linecache since it loads entire file in memory
+    log_type = LogType.get_type(filename)
+    with gzip.open(filename, "rb") as f:
+        try:
+            for idx, line in enumerate(f):
+                if idx != line_num:
+                    continue
+                without_newline = line[:-1]
+                common = _parse_common(filename, idx)
+                doc = None
+                if log_type == LogType.NGINX:
+                    doc = LOG_TYPE_PARSER[log_type](common, filename, without_newline)
+                else:
+                    doc = LOG_TYPE_PARSER[log_type](common, without_newline)
+                return doc
 
 
 def parse(filename):

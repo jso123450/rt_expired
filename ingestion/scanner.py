@@ -170,13 +170,15 @@ def scan():
     srvc_globs = CONFIG["GLOBS"]
     ctr_path = get_raw_prefix(ctr)
     for srvc in srvc_globs:
-        if srvc == "SMTP":
-            continue
+        # if srvc == "SMTP":
+        #     continue
         # if srvc == "NGINX":
         #     continue
         # if srvc == "TELNET":
         #     continue
         # if srvc == "FTP":
+        #     continue
+        # if srvc == "SSH":
         #     continue
         file_glob = ctr_path / srvc_globs[srvc]
         srvc_files[srvc] = glob.iglob(str(file_glob))

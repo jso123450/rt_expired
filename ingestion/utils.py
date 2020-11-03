@@ -75,5 +75,5 @@ def get_pipe_headers(grok):
     if "pipe_header" in grok and grok["pipe_header"] is not None:
         pipe_header += grok["pipe_header"]
     if "pipe_header_2" in grok and grok["pipe_header_2"] is not None:
-        pipe_header += grok["pipe_header"]
+        pipe_header += grok["pipe_header_2"]
     return pipe_header
