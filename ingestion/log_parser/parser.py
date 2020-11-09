@@ -201,22 +201,31 @@ def _parse_smtp(common, string):
     entry["_source"]["@timestamp"] = timestamp.isoformat() + "Z"
     if match != None and match['program'] in POSTFIX_MESSAGE_MATCHER:
         matches = []
-        for matcher in POSTFIX_MESSAGE_MATCHER[match['program']]:
+        for matcher in message_matcher[match['program']]:
             parsed_msg = matcher.grok(match['message'])
-            if parsed_msg:
-                none_count = sum([1 for key in parsed_msg if [parsed_msg[key] == None]])
-                matches.append((parsed_msg, none_count, len(parsed_msg.keys())))
-        if len(matches):
-            parsed_msg = sorted(matches, key = lambda x: (x[1], -1 * x[2]))[0][0]
             if parsed_msg != None and 'postfix_client_hostname' in parsed_msg and 'postfix_client_ip' in parsed_msg and 'postfix_client_port' in parsed_msg and \
                 parsed_msg['postfix_client_hostname'] == None and parsed_msg['postfix_client_ip'] == None and parsed_msg['postfix_client_port'] == None:
                 del(parsed_msg['postfix_client_hostname'])
                 del(parsed_msg['postfix_client_ip'])
                 del(parsed_msg['postfix_client_port'])
+            # print(match['message'])
+            # print(parsed_msg)
+            if parsed_msg:
+                matches.append((parsed_msg, sum([1 for key in parsed_msg if [parsed_msg[key] == None]]), len(parsed_msg.keys())))
+        if len(matches):
+            parsed_msg = sorted(matches, key = lambda x: (x[1], x[2]))[0][0]
+            print(parsed_msg)
+            timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
+            if timestamp.month <= 7:
+                timestamp.replace(year=2020)
+            else:
+                timestamp.replace(year=2019)
             entry["_index"] = "{}-{}.{}".format(match['program'].replace('/', '-'), 
-                    timestamp.year, timestamp.month)
+                        timestamp.year, timestamp.month)
+            entry["_type"] = match['program'].replace('/', '_')
             entry["_source"]["message"] = match['message']
             entry["_source"]["program"] = match['program']
+            entry["_source"]["@timestamp"] = match['timestamp']
             for key in parsed_msg:
                 entry["_source"][key] = parsed_msg[key]
             return entry
