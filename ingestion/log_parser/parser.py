@@ -201,36 +201,36 @@ def _parse_nginx(common, filename, string):
 def _parse_smtp(common, string):
     entry = common
     match = POSTFIX_PREFIX_MATCHER.match(string.decode())
+    if match != None and match['program'] in POSTFIX_MESSAGE_MATCHER:
+        for matcher in POSTFIX_MESSAGE_MATCHER[match['program']]:
+            parsed_msg = matcher.grok(match['message'])
+            if parsed_msg:
+                for key in parsed_msg:
+                    if parsed_msg[key] == None:
+                        break
+                else:
+                    timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
+                    if timestamp.month <= 7:
+                        timestamp = timestamp.replace(year=2020)
+                    else:
+                        timestamp = timestamp.replace(year=2019)
+                    entry["_index"] = "{}-{}.{}".format(match['program'].replace('/', '-'), 
+                        timestamp.year, timestamp.month)
+                    entry["_source"]["@timestamp"] = timestamp.isoformat() + "Z"
+                    entry["_source"]["message"] = match['message']
+                    entry["_source"]["program"] = match['program']
+                    for key in parsed_msg:
+                        entry["_source"][key] = parsed_msg[key]
+                    return entry
+        entry["_index"] = "bad-{}".format(match["program"].replace("/", "-"))
+    else:
+        entry["_index"] = "bad-postfix"
     timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
     if timestamp.month <= 7:
         timestamp = timestamp.replace(year=2020)
     else:
         timestamp = timestamp.replace(year=2019)
     entry["_source"]["@timestamp"] = timestamp.isoformat() + "Z"
-    if match != None and match['program'] in POSTFIX_MESSAGE_MATCHER:
-        matches = []
-        for matcher in POSTFIX_MESSAGE_MATCHER[match['program']]:
-            parsed_msg = matcher.grok(match['message'])
-            if parsed_msg:
-                none_count = sum([1 for key in parsed_msg if [parsed_msg[key] == None]])
-                matches.append((parsed_msg, none_count, len(parsed_msg.keys())))
-        if len(matches):
-            parsed_msg = sorted(matches, key = lambda x: (x[1], -1 * x[2]))[0][0]
-            if parsed_msg != None and 'postfix_client_hostname' in parsed_msg and 'postfix_client_ip' in parsed_msg and 'postfix_client_port' in parsed_msg and \
-                parsed_msg['postfix_client_hostname'] == None and parsed_msg['postfix_client_ip'] == None and parsed_msg['postfix_client_port'] == None:
-                del(parsed_msg['postfix_client_hostname'])
-                del(parsed_msg['postfix_client_ip'])
-                del(parsed_msg['postfix_client_port'])
-            entry["_index"] = "{}-{}.{}".format(match['program'].replace('/', '-'), 
-                    timestamp.year, timestamp.month)
-            entry["_source"]["message"] = match['message']
-            entry["_source"]["program"] = match['program']
-            for key in parsed_msg:
-                entry["_source"][key] = parsed_msg[key]
-            return entry
-        entry["_index"] = "bad-{}".format(match["program"].replace("/", "-"))
-    else:
-        entry["_index"] = "bad-postfix"
     entry["_source"]["message"] = string.decode()
     return entry
 
@@ -262,6 +262,8 @@ def parse_line(filename, line_num):
                 else:
                     doc = LOG_TYPE_PARSER[log_type](common, without_newline)
                 return doc
+        except Exception as e:
+            LOGGER.warning(f"{e}: {filename} - line {line_num}")
 
 
 def parse(filename):
