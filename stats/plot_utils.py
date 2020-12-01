@@ -51,9 +51,8 @@ def plot_ip_counts(dfs, legend, _file):
     return tmp
 
 
-def plot_sankey_filters(plot_ip_tmp, filter_lvl_labels, node_labels, _file):
-    cols = [f"ip_count_{idx+1}" for idx in range(len(filter_lvl_labels))]
-    sums = [plot_ip_tmp[col].sum() for col in cols]
+def plot_sankey_filters(dfs, node_labels, _file):
+    sums = [df.client_ip.nunique() for df in dfs]
     sums = list(reversed(sums))
     total_sums = []
     for idx in range(len(sums)):
@@ -84,4 +83,39 @@ def plot_sankey_filters(plot_ip_tmp, filter_lvl_labels, node_labels, _file):
     )])
     fig.update_layout(title_text="Filtering Level Effects on Unique Client IPs", font_size=10)
     fig.write_html(str(_file))
-    # fig.write_image(str(_file))
+
+
+# def plot_sankey_filters(plot_ip_tmp, filter_lvl_labels, node_labels, _file):
+#     cols = [f"ip_count_{idx+1}" for idx in range(len(filter_lvl_labels))]
+#     sums = [plot_ip_tmp[col].sum() for col in cols]
+#     sums = list(reversed(sums))
+#     total_sums = []
+#     for idx in range(len(sums)):
+#         partial = sum(sums[idx+1:])
+#         total_sums.append(sums[idx] + partial)
+#     source_target_values = []
+#     for idx in range(len(total_sums)-1):
+#         src = idx*2
+#         filtered_out = idx*2+1
+#         kept = idx*2+2
+#         filtered_out_val = total_sums[idx] - total_sums[idx+1]
+#         kept_val = total_sums[idx+1]
+#         source_target_values.append((src,filtered_out,filtered_out_val))
+#         source_target_values.append((src,kept,kept_val))
+#     fig = go.Figure(data=[go.Sankey(
+#         node=dict(
+#             pad = 15,
+#             thickness = 20,
+#             line = dict(color="black", width=0.5),
+#             label = node_labels,
+#             color = "blue",
+#         ),
+#         link=dict(
+#             source = [_tuple[0] for _tuple in source_target_values],
+#             target = [_tuple[1] for _tuple in source_target_values],
+#             value = [_tuple[2] for _tuple in source_target_values],
+#         )
+#     )])
+#     fig.update_layout(title_text="Filtering Level Effects on Unique Client IPs", font_size=10)
+#     fig.write_html(str(_file))
+#     # fig.write_image(str(_file))

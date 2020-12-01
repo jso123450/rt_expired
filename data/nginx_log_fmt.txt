@@ -1,0 +1,27 @@
+$remote_addr - $remote_user [$time_local] "$scheme |||| $http_host ||||  $http_accept_charset |||| $http_accept_encoding |||| $http_accept_language |||| $http_content_length |||| $http_content_md5 |||| $http_cookie |||| $http_from |||| $http_x_forwarded_for ||||  $http_x_forwarded_host |||| $http_x_wap_profile |||| $http_x_request_id |||| $http_x_correlation_id |||| $host |||| $request" |||| $status |||| $body_bytes_sent |||| "$http_referer" |||| "$http_user_agent" |||| "$gzip_ratio"
+
+
+$remote_addr = <client address>
+$remote_user = <user name supplied with the Basic authentication>
+$time_local = <local time in the Common Log Format (1.3.12, 1.2.7)>
+$scheme = <request scheme, “http” or “https”>
+$http_host = <host>:<port>
+$http_accept_charset = <charset>, <charset>;q=<weight>, <charset>;q=<weight> (browsers usually don't send)
+$http_accept_encoding = <encoding>;q=<weight>, <encoding>;q=<weight>
+$http_accept_language = <language>, <language>;q=<weight>
+$http_content_length = <length> (decimal number of bytes)
+$http_content_md5 = <hash>
+$http_cookie = <name>=<value>; <name>=<value>
+$http_from = <email>
+$http_x_forwarded_for = <client>, <proxy1>, <proxy2>
+$http_x_forwarded_host = <host>
+$http_x_wap_profile = <UAProf url>
+$http_x_request_id = <uuid>
+$http_x_correlation_id = <uuid>
+$host = <host name from the request line, or host name from the “Host” request header field, or the server name matching a request>
+$request = <full original request line>
+$status = <response status (1.3.2, 1.2.2)>
+$body_bytes_sent = <number of bytes sent to a client, not counting the response header; this variable is compatible with the “%B” parameter of the mod_log_config Apache module>
+$http_referer = <url, not sent if refering resource is a local "file" or "data" URI or an unsecured HTTP request is used and the referring page was received with a secure protocol (HTTPS)>
+$http_user_agent = <product> / <product-version> <comment> or  Mozilla/5.0 (<system-information>) <platform> (<platform-details>) <extensions>
+$gzip_ratio = <achieved compression ratio, computed as the ratio between the original and compressed response sizes>

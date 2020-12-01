@@ -2,20 +2,15 @@
 # To add a new markdown cell, type '# %% [markdown]'
 # %%
 from IPython import get_ipython
-
-# %%
 get_ipython().run_line_magic("load_ext", "autotime")
 
 # %%
 from collections import defaultdict
 import gzip
-import json
 import logging
 from pathlib import Path
 import pdb
-import re
 
-from elasticsearch import Elasticsearch
 from elasticsearch_dsl import Search, A, Q
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -42,11 +37,13 @@ MOST_COMMON_ROCKYOU = 20
 BASE_DIR = Path(CONFIG["ARTIFACT_DIR"]) / "ftp-telnet"
 DATA_DIR = BASE_DIR / "es"
 PLOTS_DIR = BASE_DIR / "plots"
+FILTERED_DIR = BASE_DIR / "filtered"
 FTP_BOT_IPS = DATA_DIR / "ftp_bot_ips.txt"
 TELNET_BOT_IPS = DATA_DIR / "telnet_bot_ips.txt"
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 PLOTS_DIR.mkdir(parents=True, exist_ok=True)
+FILTERED_DIR.mkdir(parents=True, exist_ok=True)
 
 FTP_DF = DATA_DIR / "ftp.csv"
 TELNET_DF = DATA_DIR / "telnet.csv"
@@ -60,7 +57,7 @@ LOGGER = utils.get_logger("ftp-telnet_stats", BASE_DIR / "ftp-telnet.log", loggi
 
 # %%
 def get_ftp_telnet_reqs(idx_ptrn, csv):
-    def _process_bucket(bucket):
+    def _process_bucket(idx_ptrn, bucket):
         ctid = bucket.key.ctid
         client_ip = bucket.key.ip
         user = bucket.key.user
@@ -71,7 +68,9 @@ def get_ftp_telnet_reqs(idx_ptrn, csv):
         row = [ctid, client_ip, user, password, str(bucket.doc_count)]
         output = f"{SEP.join(row)}\n"
         return output
-
+    # params
+    usecols = ["id", "client_ip", "user", "password"]
+    dtype = {"id": "uint16", "client_ip": "string", "user": "string", "password": "string"}
     srvc = idx_ptrn[:idx_ptrn.index("-*")]
     source_aggs = [
         {"ctid": A("terms", field="container.id.keyword")},
@@ -80,16 +79,22 @@ def get_ftp_telnet_reqs(idx_ptrn, csv):
         {"password": A("terms", field=f"{srvc}.password.keyword")}
     ]
     source_aggs_map = {idx_ptrn: source_aggs}
-    cols = ["id", "client_ip", "user", "password", "count"]
-    df = es_utils.query_scan_idx_aggs(
-        csv, source_aggs_map, [idx_ptrn], _process_bucket, cols, filter_time=True
+    cols = ["id", "client_ip", "user", "password", "count"]    
+    nonplacebos = sorted(list(NONPLACEBOS.keys()))
+    nonplacebos = [str(_id) for _id in nonplacebos]
+
+    # load df
+    df = es_utils.query_scan_idx(
+        csv,
+        [idx_ptrn],
+        _process_bucket,
+        cols,
+        usecols,
+        dtype,
+        source_aggs_map=source_aggs_map,
+        filter_time=True,
+        ctids=None,
     )
-    df = df.astype({
-        "id": "string",
-        "client_ip": "string",
-        "user": "string",
-        "password": "string",
-    })
     return df
 
 
@@ -154,43 +159,51 @@ def filter_df(df, rockyou, placebos, other_bot_ips):
 
     filtered_2 = nonplacebo_ips
 
-    filtered_3, placebo_creds = filter_same_creds(filtered_2, placebo_df)
-    filtered_4, rockyou_rows = filter_rockyou_passwords(filtered_3, rockyou)
-    filtered_5, domain_pw_rows = filter_domain_pw(filtered_4)
-    filtered_6 = filtered_5[~filtered_5["client_ip"].isin(other_bot_ips)]
-    other_bot_ip_rows = filtered_5[filtered_5["client_ip"].isin(other_bot_ips)]
+    filtered_3, rockyou_rows = filter_rockyou_passwords(filtered_2, rockyou)
+    filtered_4, domain_pw_rows = filter_domain_pw(filtered_3)
+    filtered_5, placebo_creds = filter_same_creds(filtered_4, placebo_df)
+    filtered_6 = filtered_5[~filtered_4["client_ip"].isin(other_bot_ips)]
+    other_bot_ip_rows = filtered_5[filtered_4["client_ip"].isin(other_bot_ips)]
 
-    filter_lvl_dfs = [filtered_6, other_bot_ip_rows, domain_pw_rows, rockyou_rows, placebo_creds, nonplacebo_bot_ips, placebo_df]
+    filter_lvl_dfs = [filtered_6, other_bot_ip_rows, placebo_creds, domain_pw_rows, rockyou_rows, nonplacebo_bot_ips, placebo_df]
     labels = [
-        "Unique Client IPs", "Filtered by other services' bot IPs", 
-        "Filtered by exact domain in passwords", f"Filtered by top {MOST_COMMON_ROCKYOU} rockyou passwords", 
-        "Filtered by exact placebo credentials", "Filtered by placebo IPs", "Filtered by placebo domains"
+        "Unique Client IPs", 
+        "Filtered by other services' bot IPs", 
+        "Filtered by exact placebo credentials", 
+        "Filtered by exact domain in passwords", 
+        f"Filtered by top {MOST_COMMON_ROCKYOU} rockyou passwords", 
+        "Filtered by placebo IPs",
+        "Filtered by placebo domains"
     ]
 
     return filter_lvl_dfs, labels
 
 # %%
 
-def run_pipeline(idx_ptrn):
-    # get source DF
-    source_path = FTP_DF if idx_ptrn == "ftp-*" else TELNET_DF    
-    usecols = ["id", "client_ip", "user", "password"]
-    dtype = {"id": "uint16", "client_ip": "string", "user": "string", "password": "string"}
-    df = es_utils.load_source_df(idx_ptrn, source_path, usecols, dtype, get_ftp_telnet_reqs)
+def bot_filter_pipeline(idx_ptrn):
+    # get source df
+    source_path = FTP_DF if idx_ptrn == "ftp-*" else TELNET_DF
+    df = get_ftp_telnet_reqs(idx_ptrn, source_path)
 
     # get placebo IPs
-    all_srvc_unique_ips = es_utils.get_srvc_unique_ips(es_utils.ALL_SRVC_UNIQUE_IPS_DF, filter_time=False)
-    placebos, _, _, _ = es_utils.filter_placebo_ips(all_srvc_unique_ips)
-    placebos = placebos.client_ip.unique()
-    del all_srvc_unique_ips
-    LOGGER.info(f"Loaded placebos {len(placebos)}")
+    placebos = sorted(list(PLACEBOS.keys()))
+    placebos = [str(_id) for _id in placebos]
+    placebo_srvc_unique_ips = es_utils.get_srvc_unique_ips(
+        es_utils.PLACEBO_SRVC_UNIQUE_IPS_DF, ctids=placebos, filter_time=False
+    )
+    placebo_ips = placebo_srvc_unique_ips.client_ip.unique()
+    ## don't need this since ftp and telnet have both placebo & nonplacebo for now
+    # idx_placebos = placebo_srvc_unique_ips[placebo_srvc_unique_ips.idx_ptrn==idx_ptrn]
+    del placebo_srvc_unique_ips
+    del placebos
+    LOGGER.info(f"Loaded placebos {len(placebo_ips)}")
 
     # get other bot IPs
     other_bot_ips = es_utils.get_other_bot_ips(idx_ptrn)
 
     # run pipeline
     rockyou = get_rockyou_passwords()
-    filter_lvl_dfs, labels = filter_df(df, rockyou, placebos, other_bot_ips)
+    filter_lvl_dfs, labels = filter_df(df, rockyou, placebo_ips, other_bot_ips)
     LOGGER.info(f"Filtered df.")
 
     bot_ips_file = FTP_BOT_IPS
@@ -201,20 +214,82 @@ def run_pipeline(idx_ptrn):
     srvc = idx_ptrn[:idx_ptrn.index("-*")]
     tmp = plot_utils.plot_ip_counts(filter_lvl_dfs, legend=labels, _file=PLOTS_DIR / f"{srvc}-filter-bars.png")
 
-    plot_utils.plot_sankey_filters(tmp, labels, 
-        node_labels=["F0", "Placebo Servers", "F1", "Placebo IPs", 
-        "F2", "Exact Placebo Credentials", "F3", 
-        f"Top {MOST_COMMON_ROCKYOU} ROCKYOU Passwords", "F4", "Exact Domain in Password", "F5", "Other Services' Bot IPs", "F6"],
+    plot_utils.plot_sankey_filters(filter_lvl_dfs, 
+        node_labels=[
+            "F0", "Placebo Servers", 
+            "F1", "Placebo IPs", 
+            "F2", f"Top {MOST_COMMON_ROCKYOU} ROCKYOU Passwords", 
+            "F3", "Exact Domain in Password", 
+            "F4", "Exact Placebo Credentials", 
+            "F5", "Other Services' Bot IPs", 
+            "F6"],
         _file=PLOTS_DIR / f"{srvc}-sankey.html")
+    return tmp, filter_lvl_dfs
+
+
+def get_placebo_creds_breakdown(df):
+    up_ips = defaultdict(lambda: defaultdict(list))
+    for row in df.itertuples():
+        up = (row.user, row.password)
+        up_ips[up]["ips"].append(row.client_ip)
+        up_ips[up]["ctids"].append(row.id)
+    rows = []
+    for up, _dict in up_ips.items():
+        ips = _dict["ips"]
+        ctids = _dict["ctids"]
+        row = [
+            up[0], up[1], len(set(ips)), len(ips), 
+            len(set(ctids)), 
+            ips, ctids
+        ]
+        rows.append(row)
+    tmp = pd.DataFrame(rows, columns=[
+        "user", "password", "unique_ips", 
+        "num_reqs", "unique_ctids", 
+        "ips", "ctids"
+    ])
     return tmp
 
 
+def plot_creds_distribution(df, which, num_str, srvc):
+    plt.hist(df[which], bins="auto")
+    fig = plt.gcf()
+    fig.patch.set_facecolor("white")
+    plt.yscale("log")
+    plt.title(f"Number of {num_str} for Credential Combinations")
+    plt.xlabel(f"Number of {num_str}")
+    plt.ylabel("Frequency")
+
+    # plt.show()
+    plt.savefig(PLOTS_DIR / f"{srvc}-creds-{which}-dist.png")
+    plt.clf()
+
 # %%
 idx_ptrn = "ftp-*"
-ftp_tmp = run_pipeline(idx_ptrn)
+ftp_tmp, ftp_filtered = bot_filter_pipeline(idx_ptrn)
+ftp_filtered[0].to_csv(FILTERED_DIR / "ftp-filtered.csv", 
+    index=False, header=True
+)
+ftp_placebo_creds = get_placebo_creds_breakdown(ftp_filtered[2])
+ftp_placebo_creds.to_csv(FILTERED_DIR / "ftp-placebo-creds.csv", 
+    index=False, header=True
+)
+plot_creds_distribution(ftp_placebo_creds, "num_reqs", "Requests", "ftp")
+plot_creds_distribution(ftp_placebo_creds, "unique_ips", "IPs", "ftp")
+plot_creds_distribution(ftp_placebo_creds, "unique_ctids", "Containers", "ftp")
 
 # %%
 idx_ptrn = "telnet-*"
-telnet_tmp = run_pipeline(idx_ptrn)
+telnet_tmp, telnet_filtered = bot_filter_pipeline(idx_ptrn)
+telnet_filtered[0].to_csv(FILTERED_DIR / "telnet-filtered.csv", 
+    index=False, header=True
+)
+telnet_placebo_creds = get_placebo_creds_breakdown(telnet_filtered[2])
+telnet_placebo_creds.to_csv(FILTERED_DIR / "telnet-placebo-creds.csv", 
+    index=False, header=True
+)
+plot_creds_distribution(telnet_placebo_creds, "num_reqs", "Requests", "telnet")
+plot_creds_distribution(telnet_placebo_creds, "unique_ips", "IPs", "telnet")
+plot_creds_distribution(telnet_placebo_creds, "unique_ctids", "Containers", "telnet")
 
 # %%
