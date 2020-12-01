@@ -1,35 +1,28 @@
+# stdlib
 import json
 import logging
 from pathlib import Path
 import sys
 
-# import pdb
-import pandas as pd
-import numpy as np
-
+# 3p
 from elasticsearch_dsl.connections import connections
+
+###############################################################################
 
 REPO_DIR = Path("~/repos/rt_expired").expanduser()
 REPO_DATA_DIR = REPO_DIR / "data"
 
-CONFIG_FILE = REPO_DIR / "stats/config.json"
+CONFIG_FILE = REPO_DIR / "bot-tagging/config.json"
 CONTAINERS_FILE = REPO_DATA_DIR / "containers.txt"
 PLACEBOS_FILE = REPO_DATA_DIR / "placebos.txt"
-BOT_ENDPOINTS_FILE = REPO_DATA_DIR / "bot_endpoints.txt"
+BOT_ENDPOINTS_FILE = REPO_DATA_DIR / "bot_endpoints.txt.1"
 BOT_TRAPS_FILE = REPO_DATA_DIR / "bot_traps.txt"
+PATH_TRAVERSALS_FILE = REPO_DATA_DIR / "path_traversal.txt"
 
-LOG_FMT = "%(name)s %(levelname)s %(asctime)-15s %(message)s"
 LOGGER = None
 CONFIG = None
 
-
-def get_logger(name, filename, level=logging.INFO):
-    global LOGGER
-    if LOGGER is None:
-        logging.basicConfig(filename=filename, format=LOG_FMT, level=level)
-        LOGGER = logging.getLogger(name)
-        LOGGER.addHandler(logging.StreamHandler(sys.stdout))
-    return LOGGER
+################################################################################
 
 
 def get_config():
@@ -37,9 +30,30 @@ def get_config():
     if CONFIG is None:
         with open(CONFIG_FILE) as f:
             CONFIG = json.load(f)
-    es_config = CONFIG["ELASTICSEARCH"]
-    connections.configure(default={"hosts": es_config["HOSTS"], "timeout": es_config["TIMEOUT"]})
+        es_config = CONFIG["ELASTICSEARCH"]
+        connections.configure(
+            default={
+                "hosts": es_config["HOSTS"],
+                "timeout": es_config["TIMEOUT"],
+                "max_retries": es_config["MAX_RETRIES"],
+                "retry_on_timeout": es_config["RETRY_ON_TIMEOUT"],
+            }
+        )
     return CONFIG
+
+
+def get_logger(name, filename, level=logging.INFO):
+    global LOGGER
+    if CONFIG is None:
+        get_config()
+    if LOGGER is None:
+        logging.basicConfig(filename=filename, format=CONFIG["LOG"]["FMT"], level=level)
+        LOGGER = logging.getLogger(name)
+        LOGGER.addHandler(logging.StreamHandler(sys.stdout))
+    return LOGGER
+
+
+################################################################################
 
 
 def _get_containers(_file):
@@ -51,7 +65,7 @@ def _get_containers(_file):
             ctid, ip, domain = line.rstrip().split(" ")
             if "placebo" not in domain and "-" in domain:
                 last_hyphen = domain.rfind("-")
-                domain = domain[:last_hyphen] + "." + domain[last_hyphen+1:]
+                domain = domain[:last_hyphen] + "." + domain[last_hyphen + 1 :]
             ctids[int(ctid)] = {"ip": ip, "domain": domain}
     return ctids
 
@@ -69,6 +83,9 @@ def get_nonplacebos():
     placebos = get_placebos()
     new_ctrs = {ctid: ctrs[ctid] for ctid in ctrs if ctid not in placebos}
     return new_ctrs
+
+
+################################################################################
 
 
 def _get_lines(_file):
@@ -89,6 +106,24 @@ def get_bot_endpoints():
     return _get_lines(BOT_ENDPOINTS_FILE)
 
 
-def save_as_json(obj, path):
-    with open(path, "w+") as f:
-        json.dump(obj, f)
+def get_path_traversals():
+    return _get_lines(PATH_TRAVERSALS_FILE)
+
+
+################################################################################
+
+
+def batch_iterable(iterable, n=100):
+    batch = []
+    for o in iterable:
+        if len(batch) == n:
+            yield batch
+            batch = []
+        batch.append(o)
+    if len(batch) > 0:
+        yield batch
+
+
+# def save_as_json(obj, path):
+#     with open(path, "w+") as f:
+#         json.dump(obj, f)

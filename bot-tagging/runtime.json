@@ -1,0 +1,15 @@
+{
+    "mode": "plot_status",
+    "services": [
+        "nginx-access-*"
+    ],
+    "tags": {
+        "nginx": [
+            "bot-endpoints"
+        ]
+    },
+    "init": {
+        "nginx": false
+    },
+    "status_file": "ctr_status.jsonl"
+}
