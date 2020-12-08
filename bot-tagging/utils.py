@@ -19,7 +19,6 @@ BOT_ENDPOINTS_FILE = REPO_DATA_DIR / "bot_endpoints.txt.1"
 BOT_TRAPS_FILE = REPO_DATA_DIR / "bot_traps.txt"
 PATH_TRAVERSALS_FILE = REPO_DATA_DIR / "path_traversal.txt"
 
-LOGGER = None
 CONFIG = None
 
 ################################################################################
@@ -43,14 +42,13 @@ def get_config():
 
 
 def get_logger(name, filename, level=logging.INFO):
-    global LOGGER
     if CONFIG is None:
         get_config()
-    if LOGGER is None:
-        logging.basicConfig(filename=filename, format=CONFIG["LOG"]["FMT"], level=level)
-        LOGGER = logging.getLogger(name)
-        LOGGER.addHandler(logging.StreamHandler(sys.stdout))
-    return LOGGER
+    logging.basicConfig(format=CONFIG["LOG"]["FMT"], level=level)
+    logger = logging.getLogger(name)
+    logger.addHandler(logging.FileHandler(filename))
+    # logger.addHandler(logging.StreamHandler(sys.stdout))
+    return logger
 
 
 ################################################################################
