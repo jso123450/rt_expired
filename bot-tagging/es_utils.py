@@ -15,7 +15,7 @@ import utils
 ###############################################################################
 
 CONFIG = utils.get_config()
-LOGGER = utils.get_logger("es_utils", "./logs/es_utils.log")
+LOGGER = utils.get_logger("es_utils", "./logs/es_utils_ftp.log")
 
 TIME_WINDOWS = CONFIG["TIME"]["WINDOWS"]
 TIME_FMT = CONFIG["TIME"]["FMT"]
@@ -193,7 +193,7 @@ def extract_ips_from_hits(hit_ips, n=1):
 
 def _generate_ip_entries(index, ips, tags=[]):
     for ip in ips:
-        entry = dict(_id=ip, _index=index, _source=dict(ip=ip, filter_tags=tags))
+        entry = dict(_id=ip, _index=index, _source={"ip": ip, FILTER_TAGS_FIELD: tags})
         yield entry
 
 
@@ -211,13 +211,14 @@ def _update_ip_entries(index, ips, tag):
         source=SCRIPT_ADD_FILTER_TAG,
         params={"tag": tag},
     )
+    ubq = ubq.params(conflicts="proceed")
     response = ubq.execute()
     # LOGGER.debug(f"_update_ip_entries {response.to_dict()}")
     return response.updated
 
 
 def init_ip_index(idx_ptrn):
-    pdb.set_trace()
+    # pdb.set_trace()
     nonplacebos = sorted(list(NONPLACEBOS.keys()))
     nonplacebos = [str(_id) for _id in nonplacebos]
     ips_gen = get_ips(idx_ptrn, filter_time=True, tag=None, ctids=nonplacebos)
