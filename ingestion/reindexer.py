@@ -16,13 +16,15 @@ import utils
 
 CONFIG = utils.load_config()["REINDEXER"]
 LOGGER = utils.get_logger("reindexer", f"{CONFIG['HOME_DIR']}/{CONFIG['LOG_PATH']}")
-CLIENT = Elasticsearch(hosts=CONFIG["HOSTS"], timeout=30)
+CLIENT = Elasticsearch(hosts=CONFIG["HOSTS"], timeout=600)
 MAX_RETRIES = CONFIG["MAX_RETRIES"]
 
 INDICES_UPDATE_MAPPING = {
     "nginx-access-*": True,
-    "telnet-*": True,
+    # "telnet-*": True,
     # "bad-nginx-access": False,
+    # "bad-postfix*" : False,
+    # "test_index" : False
 }
 RAW_DIR = "/mnt/nas/vz/root"
 CONST_LOG_EVERY_N = 100_000
@@ -46,6 +48,30 @@ def missing_ip(hit):
     return missing
 
 
+def contains_pipe_headers(hit):
+    contains = False
+    try:
+        hit.nginx.pipe_headers
+        if hit.nginx.pipe_headers != '':
+            contains = True
+    except Exception:
+        pass
+    return contains
+
+
+def within_time_range(hit):
+    start_range = datetime(2019, 8, 1)
+    end_range = datetime(2019, 12, 1) # inclusive
+    try:
+        timestamp = datetime.strptime(hit['@timestamp'][0:10], "%Y-%m-%d")
+        if timestamp >= start_range and timestamp <= end_range:
+            return True
+        else: 
+            return False
+    except Exception:
+        return True # assume within time range
+
+
 def _process_hit(hit):
     # hit.log.container = 718
     # hit.log.path = /var/log...
@@ -55,24 +81,27 @@ def _process_hit(hit):
 
 
 def _generator(search, seen_ctrs, is_update=False):
+    start_time = datetime.now()
     for idx, hit in enumerate(search.scan()):
-        logged = False
-        if hit.log.container not in seen_ctrs:
-            logged = True
-            LOGGER.info(f"  new ctr {hit.log.container} at hit {idx}...")
-            seen_ctrs.add(hit.log.container)
-        if not logged and idx % CONST_LOG_EVERY_N == 0:
-            LOGGER.info(f"  at hit {idx}...")
-        if is_update and not missing_ip(hit):
-            continue
-        doc = _process_hit(hit) # assume not None
-        if is_update:
-            doc["_id"] = hit.meta.id        # keep id
-            doc["_op_type"] = "update"      # mark update
-            ## https://stackoverflow.com/questions/35182403/bulk-update-with-pythons-elasticsearch 
-            # doc["_source"] = {"doc": doc["_source"]}  
-        yield doc
-
+        try:
+            logged = False
+            if hit.log.container not in seen_ctrs:
+                logged = True
+                LOGGER.info(f"  new ctr {hit.log.container} at hit {idx}...")
+                seen_ctrs.add(hit.log.container)
+            if not logged and idx % CONST_LOG_EVERY_N == 0:
+                LOGGER.info(f"  at hit {idx} ({datetime.now() - start_time} passed)...")
+            if is_update and (not contains_pipe_headers(hit) or not within_time_range(hit)):
+                continue
+            doc = _process_hit(hit) # assume not None
+            if is_update:
+                doc["_id"] = hit.meta.id        # keep id
+                doc["_op_type"] = "update"      # mark update
+                ## https://stackoverflow.com/questions/35182403/bulk-update-with-pythons-elasticsearch 
+                doc["_source"] = {"doc": doc["_source"]}  
+            yield doc    
+        except Exception as e:
+            LOGGER.warning(f"{e}: {hit}")
 
 def reindex():
     indices = INDICES_UPDATE_MAPPING
@@ -82,8 +111,8 @@ def reindex():
             .params(size=1_000) \
             .sort({"log.container.keyword": {"order": "asc"}})  # sanity-check
             ## we need to reindex all docs, do not filter for time
-        LOGGER.info(s.to_dict())
         seen_ctrs = set()
         is_update = indices[idx_ptrn]
+        # LOGGER.info(_generator(s, seen_ctrs, is_update=is_update))
         bulk(CLIENT, _generator(s, seen_ctrs, is_update=is_update), max_retries=MAX_RETRIES)
         LOGGER.info(f"Finished {idx_ptrn}...")

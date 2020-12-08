@@ -115,18 +115,18 @@ def _create_nginx_access_entry(common, string):
     matchers = NGINX_ACCESS_MATCHER
     for idx, matcher in enumerate(matchers):
         grok = matcher.match(string.decode())
-        if grok is not None and ("method" in grok and grok["method"] in HTTP_METHODS):
+        if grok is not None and ("request" in grok or ("method" in grok and grok["method"] in HTTP_METHODS)):
             break
 
     if grok is None:
-        entry["_index"] = "bad-nginx-access"
+        entry["_index"] = "bad-2-nginx-access"
         entry["_source"]["message"] = string.decode()
         return entry
     
     timestamp = utils.get_nginx_timestamp(grok["timestamp"]) 
 
-    if "unknown_message_pattern" in grok or ("method" in grok and grok["method"] not in HTTP_METHODS):
-        entry["_index"] = "bad-nginx-access"
+    if "request" not in grok and ("method" in grok and grok["method"] not in HTTP_METHODS):
+        entry["_index"] = "bad-2-nginx-access"
         entry["_source"]["message"] = string.decode()
         entry["_source"]["@timestamp"] = timestamp
         return entry
@@ -134,19 +134,42 @@ def _create_nginx_access_entry(common, string):
     entry["_source"]["@timestamp"] = timestamp
     entry["_index"] = f"nginx-access-{timestamp[0:4]}.{timestamp[5:7]}"
     entry["_source"]["ip"] = grok["remote_ip"]  # should always be here
-    entry["_source"]["nginx"] = {
-        "method": grok.get("method", ""),
-        "user_name": grok["user_name"],
-        "path": grok.get("url", ""),
-        "response_code": grok["response_code"],
-        "response_size": grok["bytes"],
-        "referrer": grok["referrer"],
-        "user_agent": grok.get("agent", ""),
-        "http_version": grok.get("http_version", ""),
-        "http_string": grok.get("http_string", ""),
-        "pipe_headers": utils.get_pipe_headers(grok),
-        "pipe_number": grok.get("pipe_number", ""),
-    }
+    if "unknown_message_pattern" in grok:
+        entry["_source"]["nginx"] = {
+            "unknown_message":  string.decode()
+        }
+    else:
+        entry["_source"]["nginx"] = {
+            "method": grok.get("method", ""),
+            "user_name": grok.get("user_name", ""),
+            "path": grok.get("url", ""),
+            "response_code": grok.get("response_code", ""),
+            "response_size": grok.get("bytes", ""),
+            "referrer": grok.get("referrer", ""),
+            "user_agent": grok.get("agent", ""),
+            "http_version": grok.get("http_version", ""),
+            "http_string": grok.get("http_string", ""),
+
+            # fields for logs with pipes
+            "scheme": grok.get("scheme", ""),
+            "http_host": grok.get("http_host", ""),
+            "http_accept_charset": grok.get("http_accept_charset", ""),
+            "http_accept_encoding": grok.get("http_accept_encoding", ""),
+            "http_accept_language": grok.get("http_accept_language", ""),
+            "http_content_length": grok.get("http_content_length", ""),
+            "http_content_md5": grok.get("http_content_md5", ""),
+            "http_cookie": grok.get("http_cookie", ""),
+            "http_from": grok.get("http_from", ""),
+            "http_x_forwarded_for": grok.get("http_x_forwarded_for", ""),
+            "http_x_forwarded_host": grok.get("http_x_forwarded_host", ""),
+            "http_x_wap_profile": grok.get("http_x_wap_profile", ""),
+            "http_x_request_id": grok.get("http_x_request_id", ""),
+            "http_x_correlation_id": grok.get("http_x_correlation_id", ""),
+            "host": grok.get("host", ""),
+            "request": grok.get("request", ""),
+            "gzip_ratio": grok.get("gzip_ratio", ""),
+        }
+    
     return entry
 
 
@@ -202,29 +225,35 @@ def _parse_smtp(common, string):
     entry = common
     match = POSTFIX_PREFIX_MATCHER.match(string.decode())
     if match != None and match['program'] in POSTFIX_MESSAGE_MATCHER:
+        matches = []
         for matcher in POSTFIX_MESSAGE_MATCHER[match['program']]:
             parsed_msg = matcher.grok(match['message'])
+            if parsed_msg != None and 'postfix_client_hostname' in parsed_msg and 'postfix_client_ip' in parsed_msg and 'postfix_client_port' in parsed_msg and \
+                parsed_msg['postfix_client_hostname'] == None and parsed_msg['postfix_client_ip'] == None and parsed_msg['postfix_client_port'] == None:
+                del(parsed_msg['postfix_client_hostname'])
+                del(parsed_msg['postfix_client_ip'])
+                del(parsed_msg['postfix_client_port'])
             if parsed_msg:
-                for key in parsed_msg:
-                    if parsed_msg[key] == None:
-                        break
-                else:
-                    timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
-                    if timestamp.month <= 7:
-                        timestamp = timestamp.replace(year=2020)
-                    else:
-                        timestamp = timestamp.replace(year=2019)
-                    entry["_index"] = "{}-{}.{}".format(match['program'].replace('/', '-'), 
+                matches.append((parsed_msg, sum([1 for key in parsed_msg if [parsed_msg[key] == None]]), len(parsed_msg.keys())))
+        if len(matches):
+            parsed_msg = sorted(matches, key = lambda x: (x[1], x[2]))[0][0]
+            timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
+            if timestamp.month <= 7:
+                timestamp.replace(year=2020)
+            else:
+                timestamp.replace(year=2019)
+            entry["_index"] = "{}-{}.{}".format(match['program'].replace('/', '-'), 
                         timestamp.year, timestamp.month)
-                    entry["_source"]["@timestamp"] = timestamp.isoformat() + "Z"
-                    entry["_source"]["message"] = match['message']
-                    entry["_source"]["program"] = match['program']
-                    for key in parsed_msg:
-                        entry["_source"][key] = parsed_msg[key]
-                    return entry
-        entry["_index"] = "bad-{}".format(match["program"].replace("/", "-"))
+            #entry["_type"] = match['program'].replace('/', '_')
+            entry["_source"]["message"] = match['message']
+            entry["_source"]["program"] = match['program']
+            entry["_source"]["@timestamp"] = match['timestamp']
+            for key in parsed_msg:
+                entry["_source"][key] = parsed_msg[key]
+            return entry
+        entry["_index"] = "bad-2-{}".format(match["program"].replace("/", "-"))
     else:
-        entry["_index"] = "bad-postfix"
+        entry["_index"] = "bad-2-postfix"
     timestamp = datetime.strptime(match['timestamp'], '%b  %d %H:%M:%S')
     if timestamp.month <= 7:
         timestamp = timestamp.replace(year=2020)

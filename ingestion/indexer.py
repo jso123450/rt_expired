@@ -15,7 +15,7 @@ import utils
 
 CONFIG = utils.load_config()["INDEXER"]
 LOGGER = utils.get_logger("indexer", f"{CONFIG['HOME_DIR']}/{CONFIG['LOG_PATH']}")
-CLIENT = Elasticsearch(hosts=CONFIG["HOSTS"], timeout=30)
+CLIENT = Elasticsearch(hosts=CONFIG["HOSTS"], timeout=600)
 MAX_RETRIES = CONFIG["MAX_RETRIES"]
 
 

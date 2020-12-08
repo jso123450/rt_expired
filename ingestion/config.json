@@ -24,7 +24,7 @@
             "http://192.168.1.84:9200",
             "http://192.168.1.85:9200"
         ],
-        "MAX_RETRIES": 5
+        "MAX_RETRIES": 20
     },
     "REINDEXER": {
         "HOME_DIR": "/mnt/nas_process/",
@@ -34,7 +34,7 @@
             "http://192.168.1.84:9200",
             "http://192.168.1.85:9200"
         ],
-        "MAX_RETRIES": 5
+        "MAX_RETRIES": 20
     },
     "PARSER": {
         "HOME_DIR": "/mnt/nas_process/",

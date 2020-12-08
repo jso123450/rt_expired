@@ -29,6 +29,7 @@ def parse_args():
 
 def main(task):
     if task == "index":
+        return
         # scan and unzip
         ctr, srvc_files = scanner.scan()
 
