@@ -1,0 +1,25 @@
+{
+    "HOME_DIR": "/home/ubuntu/repos/rt_expired/stats",
+    "ARTIFACT_DIR": "/mnt/analysis_artifacts",
+    "ELASTICSEARCH": {
+        "HOSTS": ["192.168.1.73:9200"],
+        "TIMEOUT": 60
+    },
+    "IO": {
+        "CSV_SEP": "|||||",
+        "CHUNK_SIZE": 100
+    },
+    "TIME": {
+        "FMT": "yyyy-MM-dd",
+        "WINDOWS": {
+            "postfix-smtp-*": {
+                "START": "2020-08-01",
+                "END": "2020-12-01"
+            },
+            "DEFAULT": {
+                "START": "2019-08-01",
+                "END": "2019-12-01"
+            }
+        }
+    }
+}

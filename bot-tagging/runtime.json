@@ -1,0 +1,30 @@
+{
+    "mode": "status",
+    "services": [
+        "telnet-*"
+    ],
+    "tags": {
+        "nginx-access-*": [
+            "bot-trap"
+        ],
+        "ftp-*": [
+            "top-20-rockyou",
+            "placebo-creds"
+        ],
+        "telnet-*": [
+            "placebo-ip",
+            "other-placebo-ip",
+            "top-20-rockyou",
+            "domain-pw",
+            "placebo-creds"
+        ],
+        "ssh-*": []
+    },
+    "init": {
+        "nginx-access-*": false,
+        "ftp-*": false,
+        "telnet-*": false,
+        "ssh-*": false
+    },
+    "status_file": "results/ctr_status.jsonl"
+}

@@ -1,0 +1,26 @@
+{
+    "HOME_DIR": "/home/ubuntu/repos/rt_expired/bot-tagging",
+    "ARTIFACT_DIR": "/mnt/analysis_artifacts/rt_expired",
+    "ELASTICSEARCH": {
+        "HOSTS": [
+            "192.168.1.82:9200",
+            "192.168.1.84:9200",
+            "192.168.1.85:9200",
+            "192.168.1.87:9200",
+            "192.168.1.88:9200"
+        ],
+        "TIMEOUT": 3600,
+        "RETRY_ON_TIMEOUT": true,
+        "MAX_RETRIES": 10
+    },
+    "LOG": {
+        "FMT": "%(name)s %(levelname)s %(asctime)-15s %(message)s"
+    },
+    "TIME": {
+        "FMT": "yyyy-MM-dd",
+        "WINDOWS": {
+            "START": "2019-08-01",
+            "END": "2019-12-01"
+        }
+    }
+}
