@@ -29,9 +29,10 @@ def parse_args():
 
 def main(task):
     if task == "index":
-        return
         # scan and unzip
         ctr, srvc_files = scanner.scan()
+        if ctr is None and srvc_files is None:
+            return True
 
         # bulk index
         indexer.bulk_index(ctr, srvc_files)
@@ -40,12 +41,14 @@ def main(task):
         scanner.cleanup(ctr)
     elif task == "reindex":
         reindexer.reindex()
+    return False
 
 
 if __name__ == "__main__":
     args = parse_args()
-    while True:
-        main(args.task)
+    finished = False
+    while not finished:
+        finished = main(args.task)
         if args.task == "reindex":
             break
         time.sleep(SLEEP_DUR)

@@ -12,7 +12,7 @@ import utils
 ########################################################
 
 CONFIG = utils.load_config()["SCANNER"]
-LOGGER = utils.get_logger("scanner", f"{CONFIG['HOME_DIR']}/{CONFIG['LOG_PATH']}")
+LOGGER = utils.get_logger("scanner")
 
 SORTED_CTRS_KEY = "SORTED_CTRS_PATH"
 PROCESSING_CTRS_KEY = "PROCESSING_CTRS_PATH"
@@ -165,13 +165,16 @@ def scan():
     # pdb.set_trace()
 
     unfinished = get_unfinished_ctrs()
+    if len(unfinished) == 0:
+        LOGGER.info(f"Finished...")
+        return None, None
     ctr = unfinished[0]
     srvc_files = {}
     srvc_globs = CONFIG["GLOBS"]
     ctr_path = get_raw_prefix(ctr)
     for srvc in srvc_globs:
-        # if srvc == "SMTP":
-        #     continue
+        if srvc == "SMTP":
+            continue
         # if srvc == "NGINX":
         #     continue
         # if srvc == "TELNET":

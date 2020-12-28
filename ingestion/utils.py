@@ -2,9 +2,13 @@ import csv
 from datetime import datetime
 import json
 import logging
+import logging.config
 from pathlib import Path
 import subprocess
 import sys
+
+
+################################################################################
 
 
 BASE_DIR = Path("/home/ubuntu/rt_expired")
@@ -12,22 +16,113 @@ CONFIG_FILE = BASE_DIR / "ingestion/config.json"
 CONTAINERS_FILE = BASE_DIR / "data/containers.txt"
 PLACEBOS_FILE = BASE_DIR / "data/placebos.txt"
 LOG_FMT = "%(name)s %(levelname)s %(asctime)-15s %(message)s"
-LOGGER = None
+CONFIG = None
 
 
-def get_logger(name, filename, level=logging.DEBUG):
-    global LOGGER
-    if LOGGER is None:
-        logging.basicConfig(filename=filename, format=LOG_FMT, level=level)
-        LOGGER = logging.getLogger(name)
-        LOGGER.addHandler(logging.StreamHandler(sys.stdout))
-    return LOGGER
+################################################################################
+
+
+class _ExcludeErrorsFilter(logging.Filter):
+    def filter(self, record):
+        """Filters out log messages with log level ERROR (numeric value: 40) or higher."""
+        return record.levelno < logging.ERROR
 
 
 def load_config():
-    with open(CONFIG_FILE) as f:
-        CONFIG = json.load(f)
-        return CONFIG
+    global CONFIG
+    if CONFIG is None:
+        with open(CONFIG_FILE) as f:
+            CONFIG = json.load(f)
+            configure_loggers()
+    return CONFIG
+
+
+def configure_loggers():
+    config = {
+        "version": 1,
+        "filters": {"exclude_errors": {"()": _ExcludeErrorsFilter}},
+        "formatters": {
+            # Modify log message format here or replace with your custom formatter class
+            "file_formatter": {"format": CONFIG["LOG"]["FMT"]},
+            "stdout_formatter": {"format": CONFIG["LOG"]["FMT"]},
+        },
+        "handlers": {
+            "console_stderr": {
+                # Sends log messages with log level ERROR or higher to stderr
+                "class": "logging.StreamHandler",
+                "level": "ERROR",
+                "formatter": "stdout_formatter",
+                "stream": sys.stderr,
+            },
+            "console_stdout": {
+                # Sends log messages with INFO <= log level to stdout
+                "class": "logging.StreamHandler",
+                "level": "INFO",
+                "formatter": "stdout_formatter",
+                "filters": ["exclude_errors"],
+                "stream": sys.stdout,
+            },
+            "file": {
+                # Sends all log messages to a file
+                "class": "logging.FileHandler",
+                "level": "DEBUG",
+                "formatter": "file_formatter",
+                "filename": "./logs/log.log",
+                "encoding": "utf8",
+            },
+            # "file_indexer": {
+            #     # Sends all log messages to a file
+            #     "class": "logging.FileHandler",
+            #     "level": "DEBUG",
+            #     "formatter": "file_formatter",
+            #     "filename": f"{CONFIG['INDEXER']}/{CONFIG['INDEXER']['LOG_PATH']}",
+            #     "encoding": "utf8",
+            # },
+            # "file_reindexer": {
+            #     # Sends all log messages to a file
+            #     "class": "logging.FileHandler",
+            #     "level": "DEBUG",
+            #     "formatter": "file_formatter",
+            #     "filename": f"{CONFIG['REINDEXER']}/{CONFIG['REINDEXER']['LOG_PATH']}",
+            #     "encoding": "utf8",
+            # },
+            # "file_scanner": {
+            #     # Sends all log messages to a file
+            #     "class": "logging.FileHandler",
+            #     "level": "DEBUG",
+            #     "formatter": "file_formatter",
+            #     "filename": f"{CONFIG['SCANNER']}/{CONFIG['SCANNER']['LOG_PATH']}",
+            #     "encoding": "utf8",
+            # },
+            # "file_parser": {
+            #     # Sends all log messages to a file
+            #     "class": "logging.FileHandler",
+            #     "level": "DEBUG",
+            #     "formatter": "file_formatter",
+            #     "filename": f"{CONFIG['PARSER']}/{CONFIG['PARSER']['LOG_PATH']}",
+            #     "encoding": "utf8",
+            # },
+        },
+        "root": {
+            # In general, this should be kept at 'NOTSET'.
+            # Otherwise it would interfere with the log levels set for each handler.
+            "level": "NOTSET",
+            "handlers": ["console_stderr", "console_stdout", "file"],
+        },
+        "loggers": {
+            "scanner": {},
+            "parser": {},
+            "indexer": {},
+            "reindexer": {},
+        },
+    }
+    logging.config.dictConfig(config)
+
+
+def get_logger(name):
+    if CONFIG is None:
+        load_config()
+    return logging.getLogger(name)
 
 
 def _get_containers(_file):
@@ -64,11 +159,15 @@ def run_cmd(cmd, output=False, check=False):
         proc = subprocess.run(cmd, shell=True, check=check)
         return None
 
+
 def get_nginx_timestamp(timestamp):
     try:
-        return datetime.strptime(timestamp, "%d/%b/%Y:%H:%M:%S %z").isoformat() # has timezone
+        return datetime.strptime(timestamp, "%d/%b/%Y:%H:%M:%S %z").isoformat()  # has timezone
     except ValueError:
-        return datetime.strptime(timestamp, "%d/%b/%Y:%H:%M:%S").isoformat() + "Z" # no timezone (assume UTC)
+        return (
+            datetime.strptime(timestamp, "%d/%b/%Y:%H:%M:%S").isoformat() + "Z"
+        )  # no timezone (assume UTC)
+
 
 def get_pipe_headers(grok):
     pipe_header = ""

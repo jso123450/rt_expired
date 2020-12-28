@@ -14,10 +14,10 @@ import utils
 
 ########################################################
 
-CONFIG = utils.load_config()["REINDEXER"]
-LOGGER = utils.get_logger("reindexer", f"{CONFIG['HOME_DIR']}/{CONFIG['LOG_PATH']}")
-CLIENT = Elasticsearch(hosts=CONFIG["HOSTS"], timeout=600)
-MAX_RETRIES = CONFIG["MAX_RETRIES"]
+LOGGER = utils.get_logger("reindexer")
+CONFIG_ES = utils.load_config()["ELASTICSEARCH"]
+CLIENT = Elasticsearch(hosts=CONFIG_ES["HOSTS"], timeout=CONFIG_ES["TIMEOUT"])
+MAX_RETRIES = CONFIG_ES["MAX_RETRIES"]
 
 INDICES_UPDATE_MAPPING = {
     "nginx-access-*": True,
@@ -52,7 +52,7 @@ def contains_pipe_headers(hit):
     contains = False
     try:
         hit.nginx.pipe_headers
-        if hit.nginx.pipe_headers != '':
+        if hit.nginx.pipe_headers != "":
             contains = True
     except Exception:
         pass
@@ -61,15 +61,15 @@ def contains_pipe_headers(hit):
 
 def within_time_range(hit):
     start_range = datetime(2019, 8, 1)
-    end_range = datetime(2019, 12, 1) # inclusive
+    end_range = datetime(2019, 12, 1)  # inclusive
     try:
-        timestamp = datetime.strptime(hit['@timestamp'][0:10], "%Y-%m-%d")
+        timestamp = datetime.strptime(hit["@timestamp"][0:10], "%Y-%m-%d")
         if timestamp >= start_range and timestamp <= end_range:
             return True
-        else: 
+        else:
             return False
     except Exception:
-        return True # assume within time range
+        return True  # assume within time range
 
 
 def _process_hit(hit):
@@ -93,24 +93,27 @@ def _generator(search, seen_ctrs, is_update=False):
                 LOGGER.info(f"  at hit {idx} ({datetime.now() - start_time} passed)...")
             if is_update and (not contains_pipe_headers(hit) or not within_time_range(hit)):
                 continue
-            doc = _process_hit(hit) # assume not None
+            doc = _process_hit(hit)  # assume not None
             if is_update:
-                doc["_id"] = hit.meta.id        # keep id
-                doc["_op_type"] = "update"      # mark update
-                ## https://stackoverflow.com/questions/35182403/bulk-update-with-pythons-elasticsearch 
-                doc["_source"] = {"doc": doc["_source"]}  
-            yield doc    
+                doc["_id"] = hit.meta.id  # keep id
+                doc["_op_type"] = "update"  # mark update
+                ## https://stackoverflow.com/questions/35182403/bulk-update-with-pythons-elasticsearch
+                doc["_source"] = {"doc": doc["_source"]}
+            yield doc
         except Exception as e:
             LOGGER.warning(f"{e}: {hit}")
+
 
 def reindex():
     indices = INDICES_UPDATE_MAPPING
     for idx, idx_ptrn in enumerate(indices):
         LOGGER.info(f"Processing {idx_ptrn}...{len(indices)-idx-1} left")
-        s = Search(using=CLIENT, index=idx_ptrn) \
-            .params(size=1_000) \
-            .sort({"log.container.keyword": {"order": "asc"}})  # sanity-check
-            ## we need to reindex all docs, do not filter for time
+        s = (
+            Search(using=CLIENT, index=idx_ptrn)
+            .params(size=1_000)
+            .sort({"log.container.keyword": {"order": "asc"}})
+        )  # sanity-check
+        ## we need to reindex all docs, do not filter for time
         seen_ctrs = set()
         is_update = indices[idx_ptrn]
         # LOGGER.info(_generator(s, seen_ctrs, is_update=is_update))
