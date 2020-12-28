@@ -1,12 +1,16 @@
 import argparse
 import json
 import requests
+import os
 
 import pdb
 
 # from urllib.parse import urlparse
 
-APIKEY = "e28442673d2cd5c1cb1a251e0caa331dc10ba43ac0df1d3ada7c0c2cf41df840"
+from dotenv import load_dotenv
+
+load_dotenv()
+APIKEY = os.getenv("FARSIGHT_APIKEY")
 
 
 def parse_args():
