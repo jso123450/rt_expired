@@ -1,0 +1,30 @@
+{
+    "mode": "tag",
+    "services": [
+        "ftp-*",
+        "ssh-*",
+        "telnet-*",
+        "nginx-access-*"
+    ],
+    "tags": {
+        "nginx-access-*": [
+            "bl"
+        ],
+        "ftp-*": [
+            "bl"
+        ],
+        "telnet-*": [
+            "bl"
+        ],
+        "ssh-*": [
+            "bl"
+        ]
+    },
+    "init": {
+        "nginx-access-*": false,
+        "ftp-*": false,
+        "telnet-*": false,
+        "ssh-*": false
+    },
+    "status_file": "results/ctr_status.jsonl"
+}

@@ -1,0 +1,20 @@
+{
+    "ip_type": "nonplacebo",
+    "mode": "analysis_ctr_status",
+    "services": [
+        "nginx-access-*"
+    ],
+    "tags": {
+        "nginx-access-*": [],
+        "ftp-*": [],
+        "telnet-*": [],
+        "ssh-*": []
+    },
+    "init": {
+        "nginx-access-*": false,
+        "ftp-*": false,
+        "telnet-*": false,
+        "ssh-*": false
+    },
+    "status_file": "results/ctr_status.jsonl"
+}

@@ -7,20 +7,27 @@
             "192.168.1.84:9200",
             "192.168.1.85:9200",
             "192.168.1.87:9200",
-            "192.168.1.88:9200"
+            "192.168.1.88:9200",
+            "192.168.1.89:9200",
+            "192.168.1.90:9200",
+            "192.168.1.95:9200",
+            "192.168.1.96:9200"
         ],
         "TIMEOUT": 3600,
         "RETRY_ON_TIMEOUT": true,
         "MAX_RETRIES": 10
     },
     "LOG": {
-        "FMT": "%(name)s %(levelname)s %(asctime)-15s %(message)s"
+        "FMT": "%(name)s %(levelname)s %(asctime)-15s %(message)s",
+        "FILE": "/home/ubuntu/repos/rt_expired/bot-tagging/logs/1off_ports.log"
     },
+    "RUNTIME": "runtime-configs/ctr_status.json",
     "TIME": {
         "FMT": "yyyy-MM-dd",
         "WINDOWS": {
             "START": "2019-08-01",
             "END": "2019-12-01"
         }
-    }
+    },
+    "BLOCKLIST_IPSETS_DIR": "/home/ubuntu/blocklist-ipsets"
 }

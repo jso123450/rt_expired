@@ -1,0 +1,4 @@
+{"idx_ptrn": "ftp-*", "bot_tagged": 4777, "untagged": 1188, "user_tagged": 4, "total": 5969, "num_bot_tagged": {"1": 2412, "2": 2017, "3": 346, "4": 2}}
+{"idx_ptrn": "ssh-*", "bot_tagged": 91771, "untagged": 18543, "user_tagged": 2, "total": 110316, "num_bot_tagged": {"1": 27198, "2": 36601, "3": 27701, "4": 271}}
+{"idx_ptrn": "telnet-*", "bot_tagged": 242317, "untagged": 772, "user_tagged": 0, "total": 243089, "num_bot_tagged": {"1": 25339, "2": 149960, "4": 9908, "3": 57110}}
+{"idx_ptrn": "nginx-access-*", "bot_tagged": 2324595, "untagged": 2914785, "user_tagged": 0, "total": 5239380, "num_bot_tagged": {"1": 2293272, "2": 26309, "3": 2585, "4": 1584, "5": 834, "6": 10, "7": 1}}

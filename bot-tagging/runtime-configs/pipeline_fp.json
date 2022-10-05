@@ -1,0 +1,21 @@
+{
+    "mode": "tag",
+    "services": [
+        "nginx-access-*"
+    ],
+    "tags": {
+        "nginx-access-*": [
+            "web-fingerprint"
+        ],
+        "ftp-*": [],
+        "telnet-*": [],
+        "ssh-*": []
+    },
+    "init": {
+        "nginx-access-*": false,
+        "ftp-*": false,
+        "telnet-*": false,
+        "ssh-*": false
+    },
+    "status_file": "results/ctr_status.jsonl"
+}

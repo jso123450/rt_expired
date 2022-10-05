@@ -1,5 +1,4 @@
 CTID IP_ADDR HOSTNAME
-613 130.245.135.2 ipv6trackerorg
 615 130.245.135.4 1xhet-com
 616 130.245.135.5 leon418-com
 617 130.245.135.6 fica-pw
@@ -25,7 +24,6 @@ CTID IP_ADDR HOSTNAME
 637 130.245.135.17 1mehbqe4-com
 638 130.245.135.18 pawprints1-com
 639 130.245.135.19 z475cai-com
-640 130.245.135.20 gongy168-cc
 641 130.245.135.21 vcsal168-com
 642 130.245.135.22 tianlang8-com
 643 130.245.135.23 wnh26-com
@@ -254,4 +252,3 @@ CTID IP_ADDR HOSTNAME
 886 130.245.135.161 justmosttrafs-com
 887 130.245.135.162 toobettrafs-com
 888 130.245.135.163 rgbdomsrv-com
-889 130.245.135.131 None

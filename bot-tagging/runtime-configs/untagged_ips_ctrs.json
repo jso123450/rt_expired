@@ -1,0 +1,19 @@
+{
+    "mode": "analysis_untagged_ips_ctrs",
+    "services": [
+        "nginx-access-*"
+    ],
+    "tags": {
+        "nginx-access-*": [],
+        "ftp-*": [],
+        "telnet-*": [],
+        "ssh-*": []
+    },
+    "init": {
+        "nginx-access-*": false,
+        "ftp-*": false,
+        "telnet-*": false,
+        "ssh-*": false
+    },
+    "file": "results/untagged_ips_ctrs.jsonl"
+}

@@ -1,0 +1,41 @@
+{
+    "ip_type": "placebo",
+    "mode": "tag",
+    "services": [
+        "nginx-access-*"
+    ],
+    "tags": {
+        "nginx-access-*": [
+            "bot-trap",
+            "init-setup",
+            "shell",
+            "logins",
+            "proxy",
+            "path-traversal",
+            "bot-endpoints",
+            "additional-be",
+            "ua-fp_exists",
+            "ua-bot",
+            "residual-path",
+            "external-referrer"
+        ],
+        "ftp-*": [
+            "other-service-bot-ip"
+        ],
+        "telnet-*": [
+            "other-service-bot-ip"
+        ],
+        "ssh-*": [
+            "other-service-bot-ip"
+        ],
+        "fp-*": []
+    },
+    "init": {
+        "nginx-access-*": false,
+        "ftp-*": false,
+        "telnet-*": false,
+        "ssh-*": false,
+        "fp-*": false
+    },
+    "status_file": "results/ctr_status.jsonl"
+}

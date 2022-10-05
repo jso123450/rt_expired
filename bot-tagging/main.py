@@ -6,8 +6,8 @@ import pdb
 # 3p
 
 # proj
-import ctr_status
-from services import nginx, ftp_telnet  # , ssh
+from analysis import ctr_status, geoips, ctr_requests, sankey
+from services import nginx, ftp_telnet, ssh
 import utils
 import es_utils
 
@@ -15,13 +15,14 @@ import es_utils
 ###############################################################################
 
 
-LOGGER = utils.get_logger("main", "./logs/main_ftp.log")
+LOGGER = utils.get_logger("main")
+CONFIG = utils.get_config()
 
 SERVICE_TAG_MAPPER = {
     "nginx-access-*": nginx.tag,
     "ftp-*": ftp_telnet.tag_ftp,
     "telnet-*": ftp_telnet.tag_telnet,
-    # "ssh-*": ssh.tag,
+    "ssh-*": ssh.tag,
 }
 
 SERVICE_SCAN_MAPPER = {
@@ -37,11 +38,18 @@ NONPLACEBOS = utils.get_nonplacebos()
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("runtime_config", type=str, help="config run file with parameters")
+    parser.add_argument(
+        "--runtime_config",
+        type=str,
+        dest="runtime_config",
+        help="runtime configuration file with parameters",
+    )
     return parser.parse_args()
 
 
 def load_runtime_config(runtime_config):
+    if runtime_config is None:
+        runtime_config = CONFIG["RUNTIME"]
     with open(runtime_config, "r") as f:
         return json.load(f)
 
@@ -58,6 +66,14 @@ def main():
     args = parse_args()
     runtime_cfg = load_runtime_config(args.runtime_config)
     mode = runtime_cfg["mode"]
+    ip_type = runtime_cfg["ip_type"]
+    placebo = ip_type == "placebo"
+    if mode == "analysis_index_status":
+        ctr_status.get_service_status(runtime_cfg["services"], runtime_cfg["status_file"])
+        return
+    elif mode == "analysis_plot_index_status":
+        ctr_status.plot_service_status(runtime_cfg["services"], runtime_cfg["status_file"])
+        return
     for idx_ptrn in runtime_cfg["services"]:
         if mode == "tag" or mode == "scan":
             func_mapper = SERVICE_TAG_MAPPER if mode == "tag" else SERVICE_SCAN_MAPPER
@@ -65,16 +81,29 @@ def main():
             init = runtime_cfg["init"][idx_ptrn]
             func = func_mapper[idx_ptrn]
             if mode == "tag":
-                func(tags, init=init)
+                func(tags, init=init, placebo=placebo)
             else:
                 ret = func(tags)
                 for tag_meta in ret:
                     pdb.set_trace()
                     json_dump(tag_meta, "./scan.json")
-        elif mode == "status":
-            ctr_status.get_containers_status(idx_ptrn, runtime_cfg["status_file"])
-        elif mode == "plot_status":
-            ctr_status.plot_status()
+        elif mode == "analysis_ctr_status":
+            ctr_status.analyze(idx_ptrn, runtime_cfg["status_file"])
+        elif mode == "analysis_plot_ctr_status":
+            ctr_status.plot_ctr_status()
+        elif mode == "reindex":
+            dst_ip_idx, _ = es_utils.create_ip_index(idx_ptrn)
+            srvc = idx_ptrn[: idx_ptrn.rfind("-*")]
+            src_ip_idx = f"ips-{srvc}"
+            es_utils.reindex_geoip(src_ip_idx, dst_ip_idx)
+        elif mode == "analysis_geoips":
+            geoips.analyze(idx_ptrn)
+        elif mode == "analysis_untagged_ips_ctrs":
+            ctr_status.get_untagged_ips_ctrs(idx_ptrn, runtime_cfg["file"])
+        elif mode == "analysis_ctr_reqs":
+            ctr_requests.analyze(idx_ptrn)
+        elif mode == "analysis_sankey":
+            sankey.analyze(idx_ptrn)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,29 @@
+{
+    "mode": "tag",
+    "services": [
+        "ssh-*",
+        "telnet-*",
+        "nginx-access-*"
+    ],
+    "tags": {
+        "nginx-access-*": [
+            "mirai"
+        ],
+        "ftp-*": [
+            "mirai"
+        ],
+        "telnet-*": [
+            "mirai"
+        ],
+        "ssh-*": [
+            "mirai"
+        ]
+    },
+    "init": {
+        "nginx-access-*": false,
+        "ftp-*": false,
+        "telnet-*": false,
+        "ssh-*": false
+    },
+    "status_file": "results/ctr_status.jsonl"
+}

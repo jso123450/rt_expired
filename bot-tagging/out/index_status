@@ -1,0 +1,9 @@
+nohup: ignoring input
+analysis INFO 2021-01-07 17:42:00,794 get_service_status for ftp-* results/index_status.jsonl
+analysis INFO 2021-01-07 17:42:01,772 get_service_status for ssh-* results/index_status.jsonl
+analysis INFO 2021-01-07 17:42:14,554 get_service_status for telnet-* results/index_status.jsonl
+nohup: ignoring input
+analysis INFO 2021-01-07 17:42:39,768 get_service_status for ftp-* results/index_status.jsonl
+analysis INFO 2021-01-07 17:42:40,723 get_service_status for ssh-* results/index_status.jsonl
+analysis INFO 2021-01-07 17:42:53,706 get_service_status for telnet-* results/index_status.jsonl
+analysis INFO 2021-01-07 17:43:23,425 get_service_status for nginx-access-* results/index_status.jsonl

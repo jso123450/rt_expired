@@ -1,0 +1,47 @@
+{
+    "mode": "analysis_geoips",
+    "services": [
+        "nginx-access-*"
+    ],
+    "tags": {
+        "nginx-access-*": [
+            "placebo-ip",
+            "other-placebo-ip",
+            "bot-trap",
+            "init-setup",
+            "shell",
+            "logins",
+            "proxy",
+            "path-traversal"
+        ],
+        "ftp-*": [
+            "repeated-creds"
+        ],
+        "telnet-*": [
+            "placebo-ip",
+            "other-placebo-ip",
+            "top-1000-rockyou",
+            "domain-pw",
+            "placebo-creds",
+            "repeated-creds"
+        ],
+        "ssh-*": [
+            "placebo-ip",
+            "other-placebo-ip",
+            "top-1000-rockyou",
+            "domain-pw",
+            "placebo-creds",
+            "repeated-creds",
+            "login-success",
+            "public-key",
+            "terminal-size"
+        ]
+    },
+    "init": {
+        "nginx-access-*": false,
+        "ftp-*": false,
+        "telnet-*": false,
+        "ssh-*": false
+    },
+    "status_file": "results/ctr_status.jsonl"
+}
